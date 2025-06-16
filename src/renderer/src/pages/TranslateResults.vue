@@ -93,18 +93,18 @@ const filteredResults = computed(() => {
 })
 
 // 清除所有翻译结果
-const clearResults = async () => {
-  try {
-    const response = await ipcRenderer?.invoke('clear-translate-results')
-    if (response?.success) {
-      results.value = []
-    } else {
-      console.error('清除翻译结果失败:', response?.error)
-    }
-  } catch (error) {
-    console.error('清除翻译结果失败:', error)
-  }
-}
+// const clearResults = async () => {
+//   try {
+//     const response = await ipcRenderer?.invoke('clear-translate-results')
+//     if (response?.success) {
+//       results.value = []
+//     } else {
+//       console.error('清除翻译结果失败:', response?.error)
+//     }
+//   } catch (error) {
+//     console.error('清除翻译结果失败:', error)
+//   }
+// }
 
 // 导出翻译结果
 const exportResults = async () => {

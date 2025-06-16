@@ -1,11 +1,9 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
-import { join, basename, extname } from 'path'
+import { join, extname } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import * as XLSX from 'xlsx'
 import { promises as fs } from 'fs'
-import { dirname } from 'path'
-import { spawn } from 'child_process'
 import { parseSync as parseSrt } from 'subtitle'
 import * as chardet from 'chardet'
 import path from 'path'
@@ -166,7 +164,6 @@ function setupIPC() {
         // 解析 ASS 格式
         const lines = content.split('\n')
         let isEvents = false
-        let formatLine = ''
         const events: SubtitleItem[] = []
 
         for (const line of lines) {
@@ -179,7 +176,6 @@ function setupIPC() {
 
           if (isEvents) {
             if (trimmed.startsWith('Format:')) {
-              formatLine = trimmed
               continue
             }
 
@@ -730,7 +726,7 @@ app.whenReady().then(() => {
   }
 
   // Create the browser window.
-  const mainWindow = createWindow()
+  createWindow()
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

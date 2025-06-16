@@ -154,7 +154,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { getTranslateService } from '../services/TranslateService'
-import * as XLSX from 'xlsx'
 import { availableLanguages, type LanguageOption } from '../constants/languages'
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }

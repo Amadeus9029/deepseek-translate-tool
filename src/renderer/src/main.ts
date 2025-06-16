@@ -13,7 +13,6 @@ import '@mdi/font/css/materialdesignicons.css'
 import App from './App.vue'
 import { initTranslateService } from './services/TranslateService'
 import config from './config/config'
-import { ipcRenderer } from 'electron'
 
 // 初始化翻译服务
 initTranslateService(config.apiKey)

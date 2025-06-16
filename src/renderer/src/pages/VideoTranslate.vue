@@ -304,7 +304,7 @@ async function startTranslate() {
               sourceLanguage.value.text,
               targetLanguage.value.text,
               [],
-              (current, total) => {
+              (_current, _total) => {
                 status.value = `重试翻译第一批：${translatedItems.length + 1} - ${translatedItems.length + halfBatch} 条`
               }
             )
