@@ -18,15 +18,15 @@ interface SubtitleItem {
   style?: string
 }
 
-interface SubtitleNode {
-  type: 'cue' | 'header'
-  data: {
-    start: number
-    end: number
-    text: string
-    settings?: string
-  }
-}
+// interface SubtitleNode {
+//   type: 'cue' | 'header'
+//   data: {
+//     start: number
+//     end: number
+//     text: string
+//     settings?: string
+//   }
+// }
 
 // 定义日志接口
 interface TranslateLog {
