@@ -5,6 +5,9 @@ on:
     tags:
       - v*.*.*
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ${{ matrix.os }}
@@ -39,6 +42,15 @@ jobs:
           mkdir -p snap/local
           chmod +x snap/local/desktop-launch
 
+      - name: Setup macOS build environment
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p build
+          security create-keychain -p dummy build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p dummy build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+
       - name: build-linux
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -49,7 +61,11 @@ jobs:
 
       - name: build-mac
         if: matrix.os == 'macos-latest'
-        run: npm run build:mac
+        run: |
+          mkdir -p build
+          npm run build:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: build-win
         if: matrix.os == 'windows-latest'
@@ -57,6 +73,7 @@ jobs:
 
       - name: release
         uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           draft: true
           files: |
@@ -71,4 +88,4 @@ jobs:
             dist/*.yml
             dist/*.blockmap
         env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
