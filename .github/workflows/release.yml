@@ -39,12 +39,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Install dependencies
+      - name: Clean install dependencies
         run: |
-          pnpm install
-          pnpm install --frozen-lockfile
-          # 创建package-lock.json以满足electron-builder的要求
-          npm i --package-lock-only --ignore-scripts --no-audit
+          pnpm install --no-optional
+          # 强制解决依赖冲突
+          npm install --force --no-optional --ignore-scripts --no-audit
 
       - name: Setup build resources
         run: |
@@ -54,14 +53,18 @@ jobs:
       # Windows 构建
       - name: Build Windows
         if: matrix.os == 'windows-latest'
-        run: pnpm build:win
+        run: |
+          pnpm rebuild
+          pnpm build:win
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # macOS 构建
       - name: Build macOS
         if: matrix.os == 'macos-latest'
-        run: pnpm build:mac
+        run: |
+          pnpm rebuild
+          pnpm build:mac
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -71,6 +74,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libarchive-tools rpm
+          pnpm rebuild
           pnpm build:linux
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
