@@ -11,15 +11,27 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+
+# Windows 配置
 win:
-  executableName: vue-ts
+  executableName: deepseek-translate-tool
+  target:
+    - target: nsis
+    - target: portable
+  icon: build/icon.ico
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+
+# macOS 配置
 mac:
   entitlementsInherit: build/entitlements.mac.plist
+  icon: build/icon.icns
+  target:
+    - target: dmg
+    - target: zip
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
@@ -27,15 +39,20 @@ mac:
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
 dmg:
   artifactName: ${name}-${version}.${ext}
+
+# Linux 配置
 linux:
   target:
-    - AppImage
-    - snap
-    - deb
+    - target: AppImage
+    - target: snap
+    - target: deb
   maintainer: electronjs.org
   category: Utility
+  icon: build/icon.png
 appImage:
   artifactName: ${name}-${version}.${ext}
+
+# 通用配置
 npmRebuild: false
 publish:
   provider: generic
