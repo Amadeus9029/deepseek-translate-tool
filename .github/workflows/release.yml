@@ -90,9 +90,9 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      # - name: build-win
-      #   if: matrix.os == 'windows-latest'
-      #   run: npm run build:win
+      - name: build-win
+        if: matrix.os == 'windows-latest'
+        run: npm run build:win
 
       - name: release
         uses: softprops/action-gh-release@v1
@@ -100,6 +100,8 @@ jobs:
         with:
           draft: true
           files: |
+            dist/*.exe
+            dist/*.zip
             dist/*.dmg
             dist/*.tar.gz
             dist/*.yml
