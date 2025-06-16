@@ -33,7 +33,12 @@ jobs:
         run: |
           sudo rm -rf /var/lib/apt/lists/*
           sudo apt-get update
-          sudo apt-get install -y snapd
+          sudo apt-get install -y snapd rpm libopenjp2-tools
+          sudo apt-get install -y --no-install-recommends libopenjp2-7
+          sudo apt-get install -y libarchive-tools
+          sudo apt-get install -y libgconf-2-4 libgtk-3-0
+          sudo apt-get install -y libnss3 libxss1 libxtst6 libglib2.0-0
+          sudo apt-get install -y libasound2 libx11-xcb1
           sudo snap install core
           sudo snap install snapcraft --classic
           sudo snap install lxd
@@ -41,6 +46,11 @@ jobs:
           sudo usermod -a -G lxd $USER
           mkdir -p snap/local
           chmod +x snap/local/desktop-launch
+          chmod +x node_modules/app-builder-bin/linux/x64/app-builder
+          rm -rf ~/.cache/electron-builder
+          rm -rf ~/.cache/electron
+          mkdir -p $HOME/.cache/electron-builder
+          sudo chown -R $USER:$USER $HOME/.cache/electron-builder
 
       - name: Setup macOS build environment
         if: matrix.os == 'macos-latest'
@@ -54,10 +64,11 @@ jobs:
       - name: build-linux
         if: matrix.os == 'ubuntu-latest'
         run: |
-          rm -rf ~/.cache/electron-builder
-          npm run build:linux
+          sudo -E env "PATH=$PATH" npm run build:linux
         env:
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
+          USE_SYSTEM_FPM: true
 
       - name: build-mac
         if: matrix.os == 'macos-latest'
