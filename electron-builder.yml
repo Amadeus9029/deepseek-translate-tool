@@ -14,6 +14,7 @@ files:
   - 'dist'
 asarUnpack:
   - resources/**
+beforeBuild: pnpm install
 win:
   target: 
     - target: nsis
@@ -65,5 +66,3 @@ publish:
   repo: Deepseek-Translate-Tool
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
-npmArgs:
-  - "--package-manager=pnpm"

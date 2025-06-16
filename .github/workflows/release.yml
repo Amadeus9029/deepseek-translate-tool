@@ -19,7 +19,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
@@ -40,10 +39,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Install dependencies and generate lockfile
+      - name: Install dependencies
         run: |
-          pnpm install --lockfile-only
           pnpm install
+          pnpm install --frozen-lockfile
+          # 创建package-lock.json以满足electron-builder的要求
+          npm i --package-lock-only --ignore-scripts --no-audit
 
       - name: Setup build resources
         run: |
