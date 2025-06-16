@@ -40,8 +40,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Install dependencies
-        run: pnpm install
+      - name: Install dependencies and generate lockfile
+        run: |
+          pnpm install --lockfile-only
+          pnpm install
 
       - name: Setup build resources
         run: |
