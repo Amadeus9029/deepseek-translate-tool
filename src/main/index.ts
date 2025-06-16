@@ -4,7 +4,6 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import * as XLSX from 'xlsx'
 import { promises as fs } from 'fs'
-import { parseSync as parseSrt } from 'subtitle'
 import * as chardet from 'chardet'
 import path from 'path'
 import fsExtra from 'fs-extra'
@@ -146,18 +145,20 @@ function setupIPC() {
       let subtitles: SubtitleItem[] = []
 
       if (ext === '.srt') {
+        // 动态导入 subsrt-ts
+        const subsrt = await import('subsrt-ts')
         // 解析 SRT 格式
-        const parsed = parseSrt(content) as SubtitleNode[]
+        const parsed = subsrt.default.parse(content) as any[]
         if (!Array.isArray(parsed)) {
           throw new Error('SRT解析失败')
         }
         
         subtitles = parsed
-          .filter(node => node.type === 'cue' && node.data && node.data.text && node.data.text.trim())
+          .filter(node => node.type === 'caption' && node.text && node.text.trim())
           .map(node => ({
-            start: formatTimestamp(node.data.start),
-            end: formatTimestamp(node.data.end),
-            text: node.data.text.trim(),
+            start: formatTimestamp(node.start),
+            end: formatTimestamp(node.end),
+            text: node.text.trim(),
             type: 'srt' as const
           }))
       } else if (ext === '.ass') {
