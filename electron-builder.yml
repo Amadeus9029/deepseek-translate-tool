@@ -1,7 +1,8 @@
-appId: com.electron.app
-productName: smart-translate-tool
+appId: com.amadeus.deepseek-translate
+productName: Deepseek Translate Tool
 directories:
   buildResources: build
+  output: dist
 files:
   - '!**/.vscode/*'
   - '!src/*'
@@ -9,38 +10,58 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - 'out'
+  - 'dist'
 asarUnpack:
   - resources/**
 win:
-  executableName: smart-translate-tool
-  signAndEditExecutable: false
+  target: 
+    - target: nsis
+      arch: 
+        - x64
+  icon: build/icon.ico
+  artifactName: ${productName}-Setup-${version}.${ext}
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
-  createDesktopShortcut: always
 mac:
+  target:
+    - target: dmg
+      arch: 
+        - x64
+        - arm64
+  icon: build/icon.icns
+  artifactName: ${productName}-${version}-${arch}.${ext}
   entitlementsInherit: build/entitlements.mac.plist
-  extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  icon: build/icon.icns
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
 linux:
-  target:
-    - AppImage
-    - snap
+  target: 
     - deb
-  maintainer: electronjs.org
+    - rpm
+  icon: build/icon.png
+  artifactName: ${productName}-${version}.${ext}
+  maintainer: ${author}
   category: Utility
-appImage:
-  artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: Amadeus9029
+  repo: Deepseek-Translate-Tool
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
