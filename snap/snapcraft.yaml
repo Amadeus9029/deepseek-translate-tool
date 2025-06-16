@@ -1,0 +1,64 @@
+name: deepseek-translate-tool
+version: '1.0.1'
+summary: An Electron application for translation
+description: |
+  A powerful translation tool built with Electron and Vue.
+  Supports multiple translation services and file formats.
+
+grade: stable
+confinement: strict
+base: core22
+architectures:
+  - build-on: amd64
+
+apps:
+  deepseek-translate-tool:
+    command: bin/desktop-launch $SNAP/deepseek-translate-tool
+    extensions: [gnome]
+    plugs:
+      - desktop
+      - desktop-legacy
+      - wayland
+      - x11
+      - unity7
+      - browser-support
+      - network
+      - gsettings
+      - audio-playback
+      - pulseaudio
+      - home
+
+parts:
+  deepseek-translate-tool:
+    plugin: npm
+    source: .
+    npm-node-version: 18.19.0
+    stage-packages:
+      - libnss3
+      - libnspr4
+      - libasound2
+      - libgdk-pixbuf2.0-0
+      - libglib2.0-0
+      - libgtk-3-0
+      - libpango-1.0-0
+      - libx11-6
+      - libxss1
+      - libxtst6
+      - libsecret-1-0
+    override-build: |
+      npm install
+      npm run build
+      mkdir -p $SNAPCRAFT_PART_INSTALL/bin
+      cp -r dist/linux-unpacked/* $SNAPCRAFT_PART_INSTALL/
+      
+  desktop-integration:
+    plugin: nil
+    stage-packages:
+      - libgtk-3-0
+      - libnotify4
+      - libxtst6
+      - libxss1
+      - libgconf-2-4
+      - libnss3
+      - libsecret-1-0
+      - xdg-utils 

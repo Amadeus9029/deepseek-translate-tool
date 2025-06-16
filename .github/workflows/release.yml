@@ -36,7 +36,8 @@ jobs:
           sudo snap install lxd
           sudo lxd init --auto
           sudo usermod -a -G lxd $USER
-          sg lxd -c 'snapcraft --use-lxd'
+          mkdir -p snap/local
+          chmod +x snap/local/desktop-launch
 
       - name: build-linux
         if: matrix.os == 'ubuntu-latest'

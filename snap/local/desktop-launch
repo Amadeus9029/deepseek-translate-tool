@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Ensure GTK themes and icons are available
+if [ -d $SNAP/usr/share/icons ]; then
+    export XDG_DATA_DIRS="$SNAP/usr/share:$XDG_DATA_DIRS"
+fi
+
+if [ -d $SNAP/usr/share/themes ]; then
+    export XDG_DATA_DIRS="$SNAP/usr/share:$XDG_DATA_DIRS"
+fi
+
+# Launch the application
+exec "$@" 
