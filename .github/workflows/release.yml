@@ -29,6 +29,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Setup Linux build environment
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools libasound2 libgtk-3-0 libx11-xcb1
+          sudo apt-get install -y libgconf-2-4 libnss3 libxss1 libxtst6 libglib2.0-0
+
+      # - name: Semantic release # 使用 semantic-release 自动化发布
+      #   uses: semantic-release/semantic-release@v19
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # 设置 GitHub 令牌
+      #     NPM_TOKEN: ${{ secrets.NPM_TOKEN }} # 设置 npm 令牌
       # - name: Install system dependencies
       #   if: matrix.os == 'ubuntu-latest'
       #   run: |
@@ -78,9 +90,9 @@ jobs:
           security unlock-keychain -p dummy build.keychain
           security set-keychain-settings -t 3600 -u build.keychain
 
-      # - name: build-linux
-      #   if: matrix.os == 'ubuntu-latest'
-      #   run: sudo npm run build:linux
+      - name: build-linux
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo npm run build:linux
 
       - name: build-mac
         if: matrix.os == 'macos-latest'
@@ -106,5 +118,8 @@ jobs:
             dist/*.tar.gz
             dist/*.yml
             dist/*.blockmap
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
