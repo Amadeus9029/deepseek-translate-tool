@@ -52,13 +52,47 @@ dmg:
 linux:
   target:
     - target: AppImage
-    - target: snap
     - target: deb
+    - target: rpm
   maintainer: electronjs.org
   category: Utility
   icon: build/icon.png
+  synopsis: "Deepseek Translate Tool"
+  description: "A powerful translation tool powered by Deepseek"
+  desktop:
+    Name: Deepseek Translate Tool
+    Comment: A powerful translation tool
+    Categories: Utility;Development;
+    MimeType: x-scheme-handler/deepseek-translate
+  deb:
+    depends:
+      - libgtk-3-0
+      - libnotify4
+      - libnss3
+      - libxss1
+      - libxtst6
+      - xdg-utils
+      - libatspi2.0-0
+      - libuuid1
+      - libsecret-1-0
+  rpm:
+    depends:
+      - gtk3
+      - libnotify
+      - nss
+      - xss
+      - libXtst
+      - xdg-utils
+      - at-spi2-core
+      - libuuid
+      - libsecret
 appImage:
   artifactName: ${name}-${version}.${ext}
+  desktop:
+    Name: Deepseek Translate Tool
+    Comment: A powerful translation tool
+    Categories: Utility;Development;
+    MimeType: x-scheme-handler/deepseek-translate
 
 # 通用配置
 npmRebuild: false
