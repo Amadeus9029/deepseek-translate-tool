@@ -33,7 +33,9 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libarchive-tools libasound2 libgtk-3-0 libx11-xcb1 libgconf-2-4 libnss3 libxss1 libxtst6 libglib2.0-0
+          sudo apt-get install -y libarchive-tools libasound2 libgtk-3-0 libx11-xcb1 libgconf-2-4 libnss3 libxss1 libxtst6 libglib2.0-0 rpm
+          sudo snap install snapcraft --classic
+          sudo snap install core
 
       # - name: Semantic release # 使用 semantic-release 自动化发布
       #   uses: semantic-release/semantic-release@v19

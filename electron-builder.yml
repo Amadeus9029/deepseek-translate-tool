@@ -41,30 +41,23 @@ mac:
     - target: dmg
     - target: zip
   extendInfo:
-    NSCameraUsageDescription: "Application requests access to the device's camera."
-    NSMicrophoneUsageDescription: "Application requests access to the device's microphone."
-    NSDocumentsFolderUsageDescription: "Application requests access to the user's Documents folder."
-    NSDownloadsFolderUsageDescription: "Application requests access to the user's Downloads folder."
+    - NSCameraUsageDescription: Application requests access to the device's camera.
+    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
 dmg:
   artifactName: ${name}-${version}.${ext}
-  sign: false
 
 # Linux 配置
 linux:
   target:
     - target: AppImage
+    - target: snap
     - target: deb
     - target: rpm
   maintainer: electronjs.org
   category: Utility
   icon: build/icon.png
-  synopsis: "Deepseek Translate Tool"
-  description: "A powerful translation tool powered by Deepseek"
-  desktop:
-    Name: Deepseek Translate Tool
-    Comment: A powerful translation tool
-    Categories: Utility;Development;
-    MimeType: x-scheme-handler/deepseek-translate
   deb:
     depends:
       - libgtk-3-0
@@ -81,7 +74,7 @@ linux:
       - gtk3
       - libnotify
       - nss
-      - xss
+      - libXScrnSaver
       - libXtst
       - xdg-utils
       - at-spi2-core
@@ -89,11 +82,6 @@ linux:
       - libsecret
 appImage:
   artifactName: ${name}-${version}.${ext}
-  desktop:
-    Name: Deepseek Translate Tool
-    Comment: A powerful translation tool
-    Categories: Utility;Development;
-    MimeType: x-scheme-handler/deepseek-translate
 
 # 通用配置
 npmRebuild: false
