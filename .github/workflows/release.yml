@@ -33,27 +33,6 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y software-properties-common
-          sudo add-apt-repository universe
-          sudo add-apt-repository multiverse
-          sudo apt-get update
-          sudo apt-get install -y \
-            libarchive-tools \
-            libasound2 \
-            libasound2-dev \
-            libgconf-2-4 \
-            libgtk-3-0 \
-            libx11-xcb1 \
-            libnss3 \
-            libxss1 \
-            libxtst6 \
-            libglib2.0-0 \
-            rpm \
-            gcc-multilib \
-            g++-multilib \
-            build-essential
-          sudo apt-get install -y snapcraft
-          sudo snap install core
 
       # - name: Semantic release # 使用 semantic-release 自动化发布
       #   uses: semantic-release/semantic-release@v19
