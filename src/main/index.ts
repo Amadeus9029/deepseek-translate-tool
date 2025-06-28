@@ -425,18 +425,17 @@ function setupIPC() {
       if (!await fsExtra.pathExists(oldPath)) {
         return { success: false, error: '源文件不存在' }
       }
-
+      
       // 检查目标文件是否已存在
       if (await fsExtra.pathExists(newPath)) {
         return { success: false, error: '目标文件已存在' }
       }
-
+      
       // 执行重命名
-      await fsExtra.move(oldPath, newPath)
+      await fsExtra.rename(oldPath, newPath)
       return { success: true }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      return { success: false, error: errorMessage }
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
     }
   })
 

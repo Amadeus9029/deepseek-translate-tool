@@ -260,97 +260,129 @@ async function startTranslate() {
     const total = subtitles.value.length
     const translatedItems: SubtitleItem[] = []
     let remainingItems = [...subtitles.value] // 待翻译的条目
+    let failedAttempts = 0
+    const maxFailedAttempts = 3 // 最大连续失败次数
 
     // 批量翻译
     while (remainingItems.length > 0) {
-      const currentBatch = remainingItems.slice(0, batch)
+      // 动态调整批次大小，如果之前失败过，减小批次大小
+      const dynamicBatchSize = failedAttempts > 0 ? Math.max(5, Math.floor(batch / (failedAttempts + 1))) : batch
+      const currentBatch = remainingItems.slice(0, dynamicBatchSize)
       const texts = currentBatch.map(item => item.text)
 
       try {
-        const translations = await translateService.translateText(
-          texts.join('\n'),
-          sourceLanguage.value.text,
-          targetLanguage.value.text,
-          [],
-          (current, total) => {
-            status.value = `正在翻译第 ${translatedItems.length + 1} - ${translatedItems.length + currentBatch.length} 条，进度：${current}/${total}`
-          }
-        )
-
-        // 处理翻译结果
-        const translationArray = translations.split('\n').filter(t => t.trim())
+        // 显示当前进度
+        status.value = `正在翻译第 ${translatedItems.length + 1} - ${translatedItems.length + currentBatch.length} 条，共 ${total} 条`
         
-        if (translationArray.length === currentBatch.length) {
-          // 如果数量匹配，保存所有翻译结果
-          currentBatch.forEach((item, index) => {
-            const translated = { ...item }
-            translated.translation = translationArray[index].trim()
-            translatedItems.push(translated)
-          })
-          // 从待翻译列表中移除已翻译的条目
-          remainingItems = remainingItems.slice(currentBatch.length)
-          translatedCount.value = translatedItems.length
-          translatedSubtitles.value = translatedItems.map(item => item.translation).join('\n')
-        } else {
-          // 如果数量不匹配，且批次大于10，减小批次大小重试
-          if (currentBatch.length > 10) {
-            const halfBatch = Math.ceil(currentBatch.length / 2)
-            const firstHalf = currentBatch.slice(0, halfBatch)
-            const firstHalfTexts = firstHalf.map(item => item.text)
-
-            // 翻译第一半
-            const firstHalfTranslations = await translateService.translateText(
-              firstHalfTexts.join('\n'),
+        // 对于本地模型，每行单独翻译可能更稳定
+        if (settings.value.useOllama && currentBatch.length > 1) {
+          // 逐行翻译
+          const batchTranslations = []
+          for (let i = 0; i < currentBatch.length; i++) {
+            const singleText = currentBatch[i].text
+            status.value = `正在翻译第 ${translatedItems.length + i + 1}/${total} 条`
+            
+            const singleTranslation = await translateService.translateText(
+              singleText,
               sourceLanguage.value.text,
               targetLanguage.value.text,
               [],
-              (_current, _total) => {
-                status.value = `重试翻译第一批：${translatedItems.length + 1} - ${translatedItems.length + halfBatch} 条`
-              }
+              () => {} // 空进度回调
             )
-
-            const firstHalfResults = firstHalfTranslations.split('\n').filter(t => t.trim())
             
-            if (firstHalfResults.length === firstHalf.length) {
-              // 保存第一半的翻译结果
-              firstHalf.forEach((item, index) => {
-                const translated = { ...item }
-                translated.translation = firstHalfResults[index].trim()
-                translatedItems.push(translated)
-              })
-              // 从待翻译列表中移除已翻译的条目
-              remainingItems = remainingItems.slice(halfBatch)
-              translatedCount.value = translatedItems.length
-              translatedSubtitles.value = translatedItems.map(item => item.translation).join('\n')
-            } else {
-              // 如果第一半也失败，将这些条目放回队列末尾
-              const failedItems = remainingItems.slice(0, halfBatch)
-              remainingItems = remainingItems.slice(halfBatch).concat(failedItems)
+            batchTranslations.push(singleTranslation)
+          }
+          
+          // 保存所有翻译结果
+          currentBatch.forEach((item, index) => {
+            const translated = { ...item }
+            translated.translation = batchTranslations[index].trim()
+            translatedItems.push(translated)
+          })
+        } else {
+          // 批量翻译
+          const translations = await translateService.translateText(
+            texts.join('\n'),
+            sourceLanguage.value.text,
+            targetLanguage.value.text,
+            [],
+            (current, total) => {
+              status.value = `正在翻译第 ${translatedItems.length + 1} - ${translatedItems.length + currentBatch.length} 条，进度：${current}/${total}`
             }
+          )
 
-            // 继续下一轮循环，处理剩余条目
-            continue
+          // 处理翻译结果
+          const translationArray = translations.split('\n').filter(t => t.trim())
+          
+          if (translationArray.length === currentBatch.length) {
+            // 如果数量匹配，保存所有翻译结果
+            currentBatch.forEach((item, index) => {
+              const translated = { ...item }
+              translated.translation = translationArray[index].trim()
+              translatedItems.push(translated)
+            })
           } else {
-            // 如果批次已经很小，将这些条目放到队列末尾
-            const failedItems = remainingItems.slice(0, currentBatch.length)
-            remainingItems = remainingItems.slice(currentBatch.length).concat(failedItems)
+            // 如果数量不匹配，切换到逐行翻译
+            failedAttempts++
+            status.value = `批量翻译结果不匹配，切换到逐行翻译 (${translationArray.length} vs ${currentBatch.length})`
             
-            // 如果连续失败次数过多，抛出错误
-            if (remainingItems.length === total) {
-              throw new Error('翻译失败次数过多，请检查网络连接或稍后重试')
+            // 逐行翻译
+            const batchTranslations = []
+            for (let i = 0; i < currentBatch.length; i++) {
+              const singleText = currentBatch[i].text
+              status.value = `正在单独翻译第 ${translatedItems.length + i + 1}/${total} 条`
+              
+              const singleTranslation = await translateService.translateText(
+                singleText,
+                sourceLanguage.value.text,
+                targetLanguage.value.text,
+                [],
+                () => {} // 空进度回调
+              )
+              
+              batchTranslations.push(singleTranslation)
             }
+            
+            // 保存所有翻译结果
+            currentBatch.forEach((item, index) => {
+              const translated = { ...item }
+              translated.translation = batchTranslations[index].trim()
+              translatedItems.push(translated)
+            })
           }
         }
+        
+        // 从待翻译列表中移除已翻译的条目
+        remainingItems = remainingItems.slice(currentBatch.length)
+        translatedCount.value = translatedItems.length
+        translatedSubtitles.value = translatedItems.map(item => item.translation).join('\n')
+        
+        // 重置失败计数
+        failedAttempts = 0
+        
       } catch (error: unknown) {
-        console.error('批次翻译失败:', error)
-        status.value = `批次翻译失败: ${error instanceof Error ? error.message : String(error)}`
+        console.error('翻译失败:', error)
+        failedAttempts++
         
-        // 将失败的条目放到队列末尾重试
-        const failedItems = remainingItems.slice(0, currentBatch.length)
-        remainingItems = remainingItems.slice(currentBatch.length).concat(failedItems)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        status.value = `翻译失败: ${errorMessage}，正在重试...`
         
-        // 如果连续失败次数过多，抛出错误
-        if (remainingItems.length === total && translatedItems.length === 0) {
+        // 如果失败次数过多，减小批次大小或抛出错误
+        if (failedAttempts >= maxFailedAttempts) {
+          if (currentBatch.length > 1) {
+            // 将当前批次拆分为更小的批次重试
+            status.value = `连续失败 ${failedAttempts} 次，减小批次大小重试`
+            // 不移除条目，下一轮循环会使用更小的批次大小
+          } else {
+            // 如果已经是单条翻译还失败，则跳过这条
+            status.value = `单条翻译失败 ${failedAttempts} 次，跳过此条`
+            remainingItems = remainingItems.slice(1) // 跳过当前条目
+            failedAttempts = 0 // 重置失败计数
+          }
+        }
+        
+        // 如果所有条目都无法翻译，抛出错误
+        if (remainingItems.length === total && translatedItems.length === 0 && failedAttempts >= maxFailedAttempts) {
           throw new Error('翻译失败次数过多，请检查网络连接或稍后重试')
         }
       }
@@ -397,7 +429,7 @@ async function startTranslate() {
         translatedContent: translatedSubtitles.value,
         timestamp: startTime,
         status: '成功' as const,
-        fileName: subtitleFile.value.split(/[\\/]/).pop() || '',
+        fileName: subtitleFile.value,
         filePath: saveResult.outputPath
       }
       await ipcRenderer.invoke('save-translate-result', translateResult)
@@ -430,7 +462,7 @@ async function startTranslate() {
       translatedContent: `翻译失败: ${errorMessage}`,
       timestamp: startTime,
       status: '失败' as const,
-      fileName: subtitleFile.value.split(/[\\/]/).pop() || '',
+      fileName: subtitleFile.value,
       filePath: subtitleFile.value
     }
     await ipcRenderer.invoke('save-translate-result', translateResult)

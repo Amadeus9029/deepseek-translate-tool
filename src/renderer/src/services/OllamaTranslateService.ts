@@ -37,13 +37,21 @@ export class OllamaTranslateService {
     }
 
     try {
-      // 使用主进程代理发送请求
-      const result = await ipcRenderer.invoke('ollama-fetch', {
+      // 添加超时处理
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('请求超时，请检查Ollama服务是否正常运行')), 30000); // 30秒超时
+      });
+      
+      // 实际请求
+      const requestPromise = ipcRenderer.invoke('ollama-fetch', {
         baseUrl: this.ollamaUrl,
         path: '/api/chat',
         method: 'POST',
         body: data
-      })
+      });
+      
+      // 使用Promise.race来实现超时处理
+      const result = await Promise.race([requestPromise, timeoutPromise]);
 
       if (!result.success) {
         throw new Error(`请求失败: ${result.error}`)
@@ -58,11 +66,20 @@ export class OllamaTranslateService {
         
         return content
       } else {
-        throw new Error('Invalid response format')
+        throw new Error('无效的响应格式，请检查模型输出')
       }
     } catch (error) {
       console.error('Ollama translation request failed:', error)
-      throw error
+      // 提供更具体的错误信息
+      if (error instanceof Error) {
+        if (error.message.includes('ECONNREFUSED') || error.message.includes('请求失败')) {
+          throw new Error('无法连接到Ollama服务，请确保Ollama已启动并正常运行')
+        } else if (error.message.includes('timeout')) {
+          throw new Error('翻译请求超时，请检查Ollama服务负载或网络连接')
+        }
+        throw error
+      }
+      throw new Error('翻译请求失败，请检查Ollama服务状态')
     }
   }
 

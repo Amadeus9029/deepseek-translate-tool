@@ -119,8 +119,8 @@ const exportResults = async () => {
         `"${result.translatedContent.replace(/"/g, '""')}"`,
         result.timestamp,
         result.status,
-        result.fileName || '',
-        result.filePath || ''
+        result.fileName ? `"${getFileName(result.fileName)}"` : '',
+        result.filePath ? `"${getFileName(result.filePath)}"` : ''
       ].join(',')
     })
 
@@ -134,7 +134,7 @@ const exportResults = async () => {
       '时间',
       '状态',
       '文件名',
-      '文件路径'
+      '输出文件'
     ].join(',')
 
     const csvData = [headers, ...csvContent].join('\n')
@@ -172,28 +172,62 @@ const clearFilters = () => {
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
+// 检查文件路径是否完整，如果不是完整路径则显示错误提示
+const isValidPath = (filePath: string | undefined): boolean => {
+  if (!filePath) return false
+  // 检查是否是有效的路径格式
+  return /^([a-zA-Z]:\\|\\\\|\/|~\/|\.\/|\.\.\/|[a-zA-Z]:\/)/i.test(filePath)
+}
+
+// 打开文件
 const openFile = async (filePath: string | undefined) => {
-  if (!filePath) return
+  if (!filePath) {
+    showError('文件路径为空')
+    return
+  }
+  
+  if (!isValidPath(filePath)) {
+    showError(`文件路径不完整或无效: ${filePath}`)
+    return
+  }
+  
   try {
     const result = await ipcRenderer?.invoke('open-file', filePath)
     if (!result?.success) {
-      console.error('打开文件失败:', result?.error)
+      showError(`打开文件失败: ${result?.error}`)
     }
   } catch (error) {
-    console.error('打开文件失败:', error)
+    showError(`打开文件失败: ${error}`)
   }
 }
 
+// 打开文件所在文件夹
 const openFileLocation = async (filePath: string | undefined) => {
-  if (!filePath) return
+  if (!filePath) {
+    showError('文件路径为空')
+    return
+  }
+  
+  if (!isValidPath(filePath)) {
+    showError(`文件路径不完整或无效: ${filePath}`)
+    return
+  }
+  
   try {
     const result = await ipcRenderer?.invoke('open-file-location', filePath)
     if (!result?.success) {
-      console.error('打开文件夹失败:', result?.error)
+      showError(`打开文件夹失败: ${result?.error}`)
     }
   } catch (error) {
-    console.error('打开文件夹失败:', error)
+    showError(`打开文件夹失败: ${error}`)
   }
+}
+
+// 显示错误消息
+const showError = (message: string) => {
+  snackbarColor.value = 'error'
+  snackbarText.value = message
+  showSnackbar.value = true
 }
 
 // 格式化日期
@@ -237,7 +271,7 @@ const getDirectoryPath = (filePath: string | undefined) => {
 // 打开重命名对话框
 const openRenameDialog = (result: TranslateResult, type: 'source' | 'output') => {
   renameTarget.value = { result, type }
-  newFileName.value = type === 'source' ? result.fileName : getFileName(result.filePath)
+  newFileName.value = type === 'source' ? getFileName(result.fileName) : getFileName(result.filePath)
   renameDialog.value = true
 }
 
@@ -266,7 +300,7 @@ const renameFile = async () => {
     if (renameResult?.success) {
       // 根据类型更新相应的文件名或路径
       if (type === 'source') {
-        result.fileName = newFileName.value
+        result.fileName = newPath // 更新为完整路径
       } else {
         result.filePath = newPath
       }
@@ -396,7 +430,7 @@ const renameFile = async () => {
               <td>{{ result.targetLanguage }}</td>
               <td class="text-content">
                 <div class="text-preview" v-tooltip.top="result.type === '文本' ? result.sourceContent : result.fileName">
-                  {{ result.type === '文本' ? formatLongText(result.sourceContent) : result.fileName }}
+                  {{ result.type === '文本' ? formatLongText(result.sourceContent) : getFileName(result.fileName) }}
                 </div>
                 <div v-if="result.fileName" class="file-actions">
                   <div class="action-group">
@@ -580,7 +614,7 @@ const renameFile = async () => {
       <v-card>
         <v-card-title>重命名文件</v-card-title>
         <v-card-text>
-          <div class="text-body-2 mb-4">当前文件名：{{ renameTarget?.result.fileName || getFileName(renameTarget?.result.filePath) }}</div>
+          <div class="text-body-2 mb-4">当前文件名：{{ renameTarget?.type === 'source' ? getFileName(renameTarget.result.fileName) : getFileName(renameTarget?.result.filePath) }}</div>
           <v-text-field
             v-model="newFileName"
             label="新文件名"

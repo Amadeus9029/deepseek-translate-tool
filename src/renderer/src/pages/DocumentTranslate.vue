@@ -390,7 +390,7 @@ async function startTranslate() {
       translatedContent: `已翻译 ${processedCount} 行，共 ${selectedLanguages.value.length} 种语言`,
       timestamp: startTime,
       status: '成功' as const,
-      fileName: excelFile.value.split(/[\\/]/).pop() || '',
+      fileName: excelFile.value, // 存储完整的源文件路径
       filePath: saveResult.outputPath // 使用主进程返回的实际输出路径
     }
     await ipcRenderer.invoke('save-translate-result', translateResult)
@@ -421,7 +421,7 @@ async function startTranslate() {
       translatedContent: `翻译失败: ${errorMessage}`,
       timestamp: startTime,
       status: '失败' as const,
-      fileName: excelFile.value.split(/[\\/]/).pop() || '',
+      fileName: excelFile.value, // 存储完整的源文件路径
       filePath: excelFile.value
     }
     await ipcRenderer.invoke('save-translate-result', translateResult)
