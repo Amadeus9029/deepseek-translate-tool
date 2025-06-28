@@ -159,6 +159,16 @@ import { settings } from '../services/SettingsService'
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
+// 创建一个带超时的Promise
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error(`操作超时，超过 ${timeoutMs/1000} 秒未响应`)), timeoutMs)
+    )
+  ]);
+}
+
 // 字幕项接口
 interface SubtitleItem {
   index?: string
@@ -262,6 +272,7 @@ async function startTranslate() {
     let remainingItems = [...subtitles.value] // 待翻译的条目
     let failedAttempts = 0
     const maxFailedAttempts = 3 // 最大连续失败次数
+    const timeout = 30000 // 30秒超时
 
     // 批量翻译
     while (remainingItems.length > 0) {
@@ -277,17 +288,20 @@ async function startTranslate() {
         // 对于本地模型，每行单独翻译可能更稳定
         if (settings.value.useOllama && currentBatch.length > 1) {
           // 逐行翻译
-          const batchTranslations = []
+          const batchTranslations: string[] = []
           for (let i = 0; i < currentBatch.length; i++) {
             const singleText = currentBatch[i].text
             status.value = `正在翻译第 ${translatedItems.length + i + 1}/${total} 条`
             
-            const singleTranslation = await translateService.translateText(
-              singleText,
-              sourceLanguage.value.text,
-              targetLanguage.value.text,
-              [],
-              () => {} // 空进度回调
+            const singleTranslation = await withTimeout(
+              translateService.translateText(
+                singleText,
+                sourceLanguage.value.text,
+                targetLanguage.value.text,
+                [],
+                () => {} // 空进度回调
+              ),
+              timeout
             )
             
             batchTranslations.push(singleTranslation)
@@ -301,14 +315,17 @@ async function startTranslate() {
           })
         } else {
           // 批量翻译
-          const translations = await translateService.translateText(
-            texts.join('\n'),
-            sourceLanguage.value.text,
-            targetLanguage.value.text,
-            [],
-            (current, total) => {
-              status.value = `正在翻译第 ${translatedItems.length + 1} - ${translatedItems.length + currentBatch.length} 条，进度：${current}/${total}`
-            }
+          const translations = await withTimeout(
+            translateService.translateText(
+              texts.join('\n'),
+              sourceLanguage.value.text,
+              targetLanguage.value.text,
+              [],
+              (current, total) => {
+                status.value = `正在翻译第 ${translatedItems.length + 1} - ${translatedItems.length + currentBatch.length} 条，进度：${current}/${total}`
+              }
+            ),
+            timeout
           )
 
           // 处理翻译结果
@@ -327,17 +344,20 @@ async function startTranslate() {
             status.value = `批量翻译结果不匹配，切换到逐行翻译 (${translationArray.length} vs ${currentBatch.length})`
             
             // 逐行翻译
-            const batchTranslations = []
+            const batchTranslations: string[] = []
             for (let i = 0; i < currentBatch.length; i++) {
               const singleText = currentBatch[i].text
               status.value = `正在单独翻译第 ${translatedItems.length + i + 1}/${total} 条`
               
-              const singleTranslation = await translateService.translateText(
-                singleText,
-                sourceLanguage.value.text,
-                targetLanguage.value.text,
-                [],
-                () => {} // 空进度回调
+              const singleTranslation = await withTimeout(
+                translateService.translateText(
+                  singleText,
+                  sourceLanguage.value.text,
+                  targetLanguage.value.text,
+                  [],
+                  () => {} // 空进度回调
+                ),
+                timeout
               )
               
               batchTranslations.push(singleTranslation)
