@@ -109,7 +109,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { getTranslateService } from '../services/TranslateService'
+import { getUnifiedTranslateService } from '../services/TranslateService'
 import { availableLanguages, type LanguageOption } from '../constants/languages'
 
 interface TranslateResult {
@@ -199,7 +199,7 @@ const startTranslate = async () => {
 
   try {
     isTranslating.value = true
-    const translateService = getTranslateService()
+    const translateService = getUnifiedTranslateService()
 
     const result = await translateService.translateText(
       sourceText.value,

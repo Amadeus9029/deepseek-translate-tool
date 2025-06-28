@@ -1,4 +1,5 @@
 import { settings } from './SettingsService'
+import { getOllamaTranslateService } from './OllamaTranslateService'
 
 declare global {
   interface Window {
@@ -127,8 +128,52 @@ export class TranslateService {
   }
 }
 
+// 统一的翻译服务接口
+export class UnifiedTranslateService {
+  /**
+   * 翻译文本（统一接口）
+   */
+  async translateText(
+    text: string,
+    sourceLang: string,
+    targetLang: string,
+    terms: [string, string][] = [],
+    onProgress?: (current: number, total: number) => void
+  ): Promise<string> {
+    if (settings.value.useOllama) {
+      // 使用 Ollama
+      const ollamaService = getOllamaTranslateService()
+      return await ollamaService.translateText(text, sourceLang, targetLang, terms, onProgress)
+    } else {
+      // 使用 DeepSeek API
+      const deepseekService = getTranslateService()
+      return await deepseekService.translateText(text, sourceLang, targetLang, terms, onProgress)
+    }
+  }
+
+  /**
+   * 测试连接
+   */
+  async testConnection(): Promise<boolean> {
+    if (settings.value.useOllama) {
+      const ollamaService = getOllamaTranslateService()
+      return await ollamaService.testConnection()
+    } else {
+      // 对于 DeepSeek API，我们可以尝试一个简单的请求
+      try {
+        const deepseekService = getTranslateService()
+        await deepseekService.translateText('test', '中文', '英文')
+        return true
+      } catch (error) {
+        return false
+      }
+    }
+  }
+}
+
 // 导出单例实例
 let translateService: TranslateService | null = null
+let unifiedTranslateService: UnifiedTranslateService | null = null
 
 export function initTranslateService(apiKey: string): void {
   translateService = new TranslateService(apiKey)
@@ -145,4 +190,11 @@ export function getTranslateService(): TranslateService {
   }
   
   return translateService
+}
+
+export function getUnifiedTranslateService(): UnifiedTranslateService {
+  if (!unifiedTranslateService) {
+    unifiedTranslateService = new UnifiedTranslateService()
+  }
+  return unifiedTranslateService
 } 

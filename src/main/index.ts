@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, net } from 'electron'
 import { join, extname } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -7,6 +7,9 @@ import { promises as fs } from 'fs'
 import * as chardet from 'chardet'
 import path from 'path'
 import fsExtra from 'fs-extra'
+import * as http from 'http'
+import * as https from 'https'
+import { URL } from 'url'
 
 // 添加类型定义
 interface SubtitleItem {
@@ -634,6 +637,69 @@ function setupIPC() {
       return { success: false, error: error instanceof Error ? error.message : String(error) }
     }
   })
+
+  // Ollama 代理 handler
+  ipcMain.handle('ollama-fetch', async (_, { baseUrl, path, method = 'GET', body }) => {
+    return new Promise((resolve) => {
+      try {
+        const fullUrl = `${baseUrl}${path}`;
+        const url = new URL(fullUrl);
+        const options = {
+          hostname: url.hostname === 'localhost' ? '127.0.0.1' : url.hostname, // 强制使用 IPv4 地址
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname + url.search,
+          method: method,
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          family: 4 // 强制使用 IPv4
+        };
+
+        const requestBody = body ? JSON.stringify(body) : undefined;
+        
+        // 选择 http 或 https 模块
+        const requestModule = url.protocol === 'https:' ? https : http;
+        
+        const req = requestModule.request(options, (res) => {
+          let data = '';
+          
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+          
+          res.on('end', () => {
+            try {
+              const jsonData = JSON.parse(data);
+              resolve({ success: true, data: jsonData });
+            } catch (err) {
+              resolve({ 
+                success: false, 
+                error: `解析响应失败: ${err && typeof err === 'object' && 'message' in err ? (err as any).message : String(err)}` 
+              });
+            }
+          });
+        });
+        
+        req.on('error', (err) => {
+          resolve({ 
+            success: false, 
+            error: `请求失败: ${err && typeof err === 'object' && 'message' in err ? (err as any).message : String(err)}` 
+          });
+        });
+        
+        if (requestBody) {
+          req.write(requestBody);
+        }
+        
+        req.end();
+      } catch (err) {
+        resolve({ 
+          success: false, 
+          error: `请求异常: ${err && typeof err === 'object' && 'message' in err ? (err as any).message : String(err)}` 
+        });
+      }
+    });
+  });
 }
 
 function createWindow(): BrowserWindow {

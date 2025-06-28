@@ -11,6 +11,10 @@ interface Settings {
   progressInterval: number;
   model: string;
   subtitleBatchSize: number;
+  // Ollama 相关设置
+  useOllama: boolean;
+  ollamaUrl: string;
+  ollamaModel: string;
 }
 
 // 默认设置
@@ -23,7 +27,11 @@ const defaultSettings: Settings = {
   saveInterval: 100,
   progressInterval: 10,
   model: 'deepseek-chat',
-  subtitleBatchSize: 20
+  subtitleBatchSize: 20,
+  // Ollama 默认设置
+  useOllama: false,
+  ollamaUrl: 'http://localhost:11434',
+  ollamaModel: 'deepseek-r1:7b'
 }
 
 // 创建响应式的设置存储

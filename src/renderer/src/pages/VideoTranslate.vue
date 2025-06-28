@@ -153,7 +153,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { getTranslateService } from '../services/TranslateService'
+import { getUnifiedTranslateService } from '../services/TranslateService'
 import { availableLanguages, type LanguageOption } from '../constants/languages'
 import { settings } from '../services/SettingsService'
 
@@ -255,7 +255,7 @@ async function startTranslate() {
     status.value = '准备开始翻译...'
     translatedCount.value = 0
 
-    const translateService = getTranslateService()
+    const translateService = getUnifiedTranslateService()
     const batch = settings.value.subtitleBatchSize
     const total = subtitles.value.length
     const translatedItems: SubtitleItem[] = []

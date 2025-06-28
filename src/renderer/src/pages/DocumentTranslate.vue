@@ -153,7 +153,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { getTranslateService } from '../services/TranslateService'
+import { getUnifiedTranslateService } from '../services/TranslateService'
 import { availableLanguages, type LanguageOption } from '../constants/languages'
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
@@ -281,7 +281,7 @@ async function startTranslate() {
     }
 
     // 获取翻译服务实例
-    const translateService = getTranslateService()
+    const translateService = getUnifiedTranslateService()
 
     // 创建新的数据结构，保留原始数据
     const translatedData: ExcelRow[] = []
