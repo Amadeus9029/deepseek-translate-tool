@@ -8,7 +8,7 @@
           <div class="file-input-row">
             <div class="label">Excel文件:</div>
             <v-text-field
-              v-model="excelFile"
+              v-model="store.documentTranslate.excelFile"
               hide-details
               density="compact"
               variant="outlined"
@@ -20,7 +20,7 @@
               color="primary" 
               class="select-btn" 
               @click="selectFile"
-              :disabled="isTranslating"
+              :disabled="store.documentTranslate.isTranslating"
             >
               选择文件
             </v-btn>
@@ -31,16 +31,16 @@
         <div class="section">
           <div class="section-title">翻译参考设置</div>
           <div class="reference-options">
-            <v-radio-group v-model="referenceType" inline hide-details>
+            <v-radio-group v-model="store.documentTranslate.referenceType" inline hide-details>
               <v-radio label="不使用参考源" value="none"></v-radio>
               <v-radio label="使用内置参考源" value="internal"></v-radio>
               <v-radio label="使用外置参考源" value="external"></v-radio>
             </v-radio-group>
 
             <!-- 内置参考源设置 -->
-            <div v-if="referenceType === 'internal'" class="mt-4">
+            <div v-if="store.documentTranslate.referenceType === 'internal'" class="mt-4">
               <v-select
-                v-model="internalRefLang"
+                v-model="store.documentTranslate.internalRefLang"
                 :items="availableLanguages"
                 label="选择参考语言列"
                 hide-details
@@ -51,10 +51,10 @@
             </div>
 
             <!-- 外置参考源设置 -->
-            <div v-if="referenceType === 'external'" class="mt-4">
+            <div v-if="store.documentTranslate.referenceType === 'external'" class="mt-4">
               <div class="file-input-row mb-2">
                 <v-text-field
-                  v-model="externalRefFile"
+                  v-model="store.documentTranslate.externalRefFile"
                   hide-details
                   density="compact"
                   variant="outlined"
@@ -66,13 +66,13 @@
                   color="primary" 
                   class="select-btn" 
                   @click="selectRefFile"
-                  :disabled="isTranslating"
+                  :disabled="store.documentTranslate.isTranslating"
                 >
                   选择文件
                 </v-btn>
               </div>
               <v-select
-                v-model="externalRefLang"
+                v-model="store.documentTranslate.externalRefLang"
                 :items="availableLanguages"
                 label="选择参考语言列"
                 hide-details
@@ -91,7 +91,7 @@
             <div class="source-language">
               <div class="label">源语言:</div>
               <v-autocomplete
-                v-model="sourceLanguage"
+                v-model="store.documentTranslate.sourceLanguage"
                 :items="availableLanguages"
                 hide-details
                 density="compact"
@@ -107,7 +107,7 @@
               <v-checkbox
                 v-for="lang in availableLanguages"
                 :key="lang.value"
-                v-model="selectedLanguages"
+                v-model="store.documentTranslate.selectedLanguages"
                 :label="lang.text"
                 :value="lang.value"
                 hide-details
@@ -125,10 +125,10 @@
             size="large" 
             class="start-btn" 
             @click="startTranslate"
-            :loading="isTranslating"
-            :disabled="isTranslating"
+            :loading="store.documentTranslate.isTranslating"
+            :disabled="store.documentTranslate.isTranslating"
           >
-            {{ isTranslating ? '翻译中...' : '开始翻译' }}
+            {{ store.documentTranslate.isTranslating ? '翻译中...' : '开始翻译' }}
           </v-btn>
         </div>
 
@@ -136,11 +136,11 @@
         <div class="section">
           <div class="section-title">运行日志</div>
           <div class="log-container">
-            <div v-if="logs.length === 0" class="empty-log">
+            <div v-if="store.documentTranslate.logs.length === 0" class="empty-log">
               暂无日志信息
             </div>
             <div v-else class="log-content">
-              <div v-for="(log, index) in logs" :key="index" class="log-item">
+              <div v-for="(log, index) in store.documentTranslate.logs" :key="index" class="log-item">
                 {{ log }}
               </div>
             </div>
@@ -152,29 +152,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { getTranslateService } from '../services/TranslateService'
+import { onMounted } from 'vue'
+import { getUnifiedTranslateService } from '../services/TranslateService'
 import { availableLanguages, type LanguageOption } from '../constants/languages'
+import { useTranslateStore } from '../stores/translateStore'
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
+const store = useTranslateStore()
 
 interface ExcelRow {
   [key: string]: string | number | boolean | null | undefined
 }
 
-const excelFile = ref('')
-const referenceType = ref('none')
-const sourceLanguage = ref<LanguageOption>({ text: '英语', value: '英语' })
-const selectedLanguages = ref<string[]>([])
-const logs = ref<string[]>([])
-const isTranslating = ref(false)
-
-// 内置参考源设置
-const internalRefLang = ref('')
-
-// 外置参考源设置
-const externalRefFile = ref('')
-const externalRefLang = ref('')
+// 组件挂载时初始化状态
+onMounted(() => {
+  // 如果状态为空，设置默认值
+  if (!store.documentTranslate.sourceLanguage) {
+    store.documentTranslate.sourceLanguage = { text: '英语', value: '英语' }
+  }
+})
 
 async function selectFile() {
   if (!ipcRenderer) return
@@ -187,8 +183,8 @@ async function selectFile() {
     })
     
     if (result.filePath) {
-      excelFile.value = result.filePath
-      logs.value = [...logs.value, `已选择文件: ${result.filePath}`]
+      store.documentTranslate.excelFile = result.filePath
+      store.addDocumentLog(`已选择文件: ${result.filePath}`)
     }
   } catch (error) {
     console.error('选择文件失败:', error)
@@ -206,8 +202,8 @@ async function selectRefFile() {
     })
     
     if (result.filePath) {
-      externalRefFile.value = result.filePath
-      logs.value = [...logs.value, `已选择参考文件: ${result.filePath}`]
+      store.documentTranslate.externalRefFile = result.filePath
+      store.addDocumentLog(`已选择参考文件: ${result.filePath}`)
     }
   } catch (error) {
     console.error('选择参考文件失败:', error)
@@ -215,29 +211,29 @@ async function selectRefFile() {
 }
 
 async function startTranslate() {
-  if (!excelFile.value) {
-    logs.value = [...logs.value, '请先选择要翻译的文件']
+  if (!store.documentTranslate.excelFile) {
+    store.addDocumentLog('请先选择要翻译的文件')
     return
   }
 
-  if (selectedLanguages.value.length === 0) {
-    logs.value = [...logs.value, '请选择至少一个目标语言']
+  if (store.documentTranslate.selectedLanguages.length === 0) {
+    store.addDocumentLog('请选择至少一个目标语言')
     return
   }
 
   // 验证参考源设置
-  if (referenceType.value === 'internal' && !internalRefLang.value) {
-    logs.value = [...logs.value, '请选择内置参考源语言']
+  if (store.documentTranslate.referenceType === 'internal' && !store.documentTranslate.internalRefLang) {
+    store.addDocumentLog('请选择内置参考源语言')
     return
   }
 
-  if (referenceType.value === 'external') {
-    if (!externalRefFile.value) {
-      logs.value = [...logs.value, '请选择外置参考源文件']
+  if (store.documentTranslate.referenceType === 'external') {
+    if (!store.documentTranslate.externalRefFile) {
+      store.addDocumentLog('请选择外置参考源文件')
       return
     }
-    if (!externalRefLang.value) {
-      logs.value = [...logs.value, '请选择外置参考源语言']
+    if (!store.documentTranslate.externalRefLang) {
+      store.addDocumentLog('请选择外置参考源语言')
       return
     }
   }
@@ -245,9 +241,9 @@ async function startTranslate() {
   // 创建日志对象
   const startTime = new Date().toISOString()
   const logEntry = {
-    fileName: excelFile.value.split(/[\\/]/).pop() || '',
-    sourceLanguage: sourceLanguage.value.text,
-    targetLanguage: selectedLanguages.value.join(', '),
+    fileName: store.documentTranslate.excelFile.split(/[\\/]/).pop() || '',
+    sourceLanguage: store.documentTranslate.sourceLanguage?.text || '',
+    targetLanguage: store.documentTranslate.selectedLanguages.join(', '),
     translateCount: 0,
     startTime,
     completed: false,
@@ -255,15 +251,15 @@ async function startTranslate() {
   }
 
   try {
-    isTranslating.value = true
-    logs.value = [
-      `开始翻译：${excelFile.value}`,
-      `源语言：${sourceLanguage.value.text}`,
-      `目标语言：${selectedLanguages.value.join(', ')}`
+    store.documentTranslate.isTranslating = true
+    store.documentTranslate.logs = [
+      `开始翻译：${store.documentTranslate.excelFile}`,
+      `源语言：${store.documentTranslate.sourceLanguage?.text || ''}`,
+      `目标语言：${store.documentTranslate.selectedLanguages.join(', ')}`
     ]
 
     // 读取主Excel文件
-    const result = await ipcRenderer.invoke('read-excel-file', excelFile.value)
+    const result = await ipcRenderer.invoke('read-excel-file', store.documentTranslate.excelFile)
     if (!result.success) {
       throw new Error(`读取Excel文件失败: ${result.error}`)
     }
@@ -272,8 +268,8 @@ async function startTranslate() {
 
     // 如果使用外置参考源，读取参考文件
     let referenceData: ExcelRow[] = []
-    if (referenceType.value === 'external') {
-      const refResult = await ipcRenderer.invoke('read-excel-file', externalRefFile.value)
+    if (store.documentTranslate.referenceType === 'external') {
+      const refResult = await ipcRenderer.invoke('read-excel-file', store.documentTranslate.externalRefFile)
       if (!refResult.success) {
         throw new Error(`读取参考文件失败: ${refResult.error}`)
       }
@@ -281,7 +277,7 @@ async function startTranslate() {
     }
 
     // 获取翻译服务实例
-    const translateService = getTranslateService()
+    const translateService = getUnifiedTranslateService()
 
     // 创建新的数据结构，保留原始数据
     const translatedData: ExcelRow[] = []
@@ -289,7 +285,7 @@ async function startTranslate() {
 
     // 获取源文本列和参考文本列（如果使用内置参考）
     const sourceColumn = Object.keys(data[0])[0] // 第一列作为源文本
-    const refColumn = referenceType.value === 'internal' ? internalRefLang.value : null
+    const refColumn = store.documentTranslate.referenceType === 'internal' ? store.documentTranslate.internalRefLang : null
 
     // 遍历每一行数据
     for (const row of data as ExcelRow[]) {
@@ -300,22 +296,22 @@ async function startTranslate() {
       const sourceText = row[sourceColumn]
       if (typeof sourceText === 'string' && sourceText.trim()) {
         // 为每个目标语言进行翻译
-        for (const targetLang of selectedLanguages.value) {
+        for (const targetLang of store.documentTranslate.selectedLanguages) {
           try {
             let refValue = ''
 
             // 获取参考文本
-            if (referenceType.value === 'internal' && refColumn) {
+            if (store.documentTranslate.referenceType === 'internal' && refColumn) {
               // 从当前行获取参考文本
               const internalRef = row[refColumn]
               refValue = typeof internalRef === 'string' ? internalRef : ''
-            } else if (referenceType.value === 'external') {
+            } else if (store.documentTranslate.referenceType === 'external') {
               // 从参考文件中查找匹配的行
               const matchingRow = referenceData.find(refRow => {
                 return refRow[sourceColumn] === sourceText
               })
               if (matchingRow) {
-                const externalRef = matchingRow[externalRefLang.value]
+                const externalRef = matchingRow[store.documentTranslate.externalRefLang]
                 refValue = typeof externalRef === 'string' ? externalRef : ''
               }
             }
@@ -327,11 +323,11 @@ async function startTranslate() {
 
             const translatedText = await translateService.translateText(
               prompt,
-              sourceLanguage.value.text,
+              store.documentTranslate.sourceLanguage?.text || '英语',
               targetLang,
               [], // 这里可以添加术语表支持
               (current, total) => {
-                logs.value = [...logs.value, `正在翻译第 ${processedCount + 1} 行的 ${targetLang} 翻译，进度：${current}/${total}`]
+                store.addDocumentLog(`正在翻译第 ${processedCount + 1} 行的 ${targetLang} 翻译，进度：${current}/${total}`)
               }
             )
 
@@ -346,11 +342,11 @@ async function startTranslate() {
 
       translatedData.push(translatedRow)
       processedCount++
-      logs.value = [...logs.value, `完成第 ${processedCount}/${data.length} 行的所有语言翻译`]
+      store.addDocumentLog(`完成第 ${processedCount}/${data.length} 行的所有语言翻译`)
     }
 
     // 生成输出文件夹路径
-    const outputDir = excelFile.value.replace(/\.[^.]+$/, '_translations')
+    const outputDir = store.documentTranslate.excelFile.replace(/\.[^.]+$/, '_translations')
     // 生成输出文件名（使用相对路径）
     const fileName = `translated_${new Date().getTime()}.xlsx`
     const outputPath = `${outputDir}/${fileName}`
@@ -372,7 +368,7 @@ async function startTranslate() {
     const duration = Math.round((new Date(endTime).getTime() - new Date(startTime).getTime()) / 1000)
     
     Object.assign(logEntry, {
-      translateCount: processedCount * selectedLanguages.value.length,
+      translateCount: processedCount * store.documentTranslate.selectedLanguages.length,
       endTime,
       duration,
       completed: true
@@ -384,19 +380,19 @@ async function startTranslate() {
     // 保存翻译结果
     const translateResult = {
       type: '文档' as const,
-      sourceLanguage: sourceLanguage.value.text,
-      targetLanguage: selectedLanguages.value.join(', '),
+      sourceLanguage: store.documentTranslate.sourceLanguage?.text || '',
+      targetLanguage: store.documentTranslate.selectedLanguages.join(', '),
       sourceContent: '文档内容',
-      translatedContent: `已翻译 ${processedCount} 行，共 ${selectedLanguages.value.length} 种语言`,
+      translatedContent: `已翻译 ${processedCount} 行，共 ${store.documentTranslate.selectedLanguages.length} 种语言`,
       timestamp: startTime,
       status: '成功' as const,
-      fileName: excelFile.value.split(/[\\/]/).pop() || '',
+      fileName: store.documentTranslate.excelFile, // 存储完整的源文件路径
       filePath: saveResult.outputPath // 使用主进程返回的实际输出路径
     }
     await ipcRenderer.invoke('save-translate-result', translateResult)
 
-    logs.value = [...logs.value, `已保存所有翻译结果到: ${saveResult.outputPath}`]
-    logs.value = [...logs.value, '翻译任务已完成！']
+    store.addDocumentLog(`已保存所有翻译结果到: ${saveResult.outputPath}`)
+    store.addDocumentLog('翻译任务已完成！')
   } catch (err: unknown) {
     console.error('翻译过程出错:', err)
     const errorMessage = err instanceof Error ? err.message : '未知错误'
@@ -415,20 +411,20 @@ async function startTranslate() {
     // 保存失败的翻译结果
     const translateResult = {
       type: '文档' as const,
-      sourceLanguage: sourceLanguage.value.text,
-      targetLanguage: selectedLanguages.value.join(', '),
+      sourceLanguage: store.documentTranslate.sourceLanguage?.text || '',
+      targetLanguage: store.documentTranslate.selectedLanguages.join(', '),
       sourceContent: '文档内容',
       translatedContent: `翻译失败: ${errorMessage}`,
       timestamp: startTime,
       status: '失败' as const,
-      fileName: excelFile.value.split(/[\\/]/).pop() || '',
-      filePath: excelFile.value
+      fileName: store.documentTranslate.excelFile, // 存储完整的源文件路径
+      filePath: store.documentTranslate.excelFile
     }
     await ipcRenderer.invoke('save-translate-result', translateResult)
     
-    logs.value = [...logs.value, `翻译出错: ${errorMessage}`]
+    store.addDocumentLog(`翻译出错: ${errorMessage}`)
   } finally {
-    isTranslating.value = false
+    store.documentTranslate.isTranslating = false
   }
 }
 </script>

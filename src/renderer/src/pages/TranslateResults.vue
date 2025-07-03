@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useTheme } from 'vuetify'
+import { useTranslateStore } from '../stores/translateStore'
 
 interface TranslateResult {
   id: string
@@ -27,31 +28,25 @@ const isDark = computed(() => theme.global.current.value.dark)
 // 模拟数据
 const results = ref<TranslateResult[]>([])
 
-// 加载翻译结果
-async function loadResults() {
-  try {
-    const response = await ipcRenderer?.invoke('read-translate-results')
-    if (response?.success) {
-      results.value = response.results
-    } else {
-      console.error('加载翻译结果失败:', response?.error)
-    }
-  } catch (error) {
-    console.error('加载翻译结果失败:', error)
-  }
-}
-
-// 在组件挂载时加载结果
-onMounted(() => {
-  loadResults()
-})
-
+// 过滤相关
 const search = ref('')
 const selectedType = ref<string[]>([])
 const selectedStatus = ref<string[]>([])
 const dateRange = ref([null, null])
 const sortBy = ref('timestamp')
 const sortDesc = ref(true)
+
+// 分页相关
+const currentPage = ref(1)
+const pageSize = ref(10)
+const pageSizeOptions = [
+  { title: '10条/页', value: 10 },
+  { title: '20条/页', value: 20 },
+  { title: '50条/页', value: 50 },
+  { title: '100条/页', value: 100 }
+]
+
+// 其他状态
 const selectedResult = ref<TranslateResult | null>(null)
 const detailDialog = ref(false)
 const showSnackbar = ref(false)
@@ -65,6 +60,9 @@ const newFileName = ref('')
 
 const types = ['文本', '文档', '字幕']
 const statuses = ['成功', '失败']
+
+// 使用翻译状态存储
+const translateStore = useTranslateStore()
 
 // 过滤和排序后的结果
 const filteredResults = computed(() => {
@@ -92,19 +90,56 @@ const filteredResults = computed(() => {
     })
 })
 
-// 清除所有翻译结果
-// const clearResults = async () => {
-//   try {
-//     const response = await ipcRenderer?.invoke('clear-translate-results')
-//     if (response?.success) {
-//       results.value = []
-//     } else {
-//       console.error('清除翻译结果失败:', response?.error)
-//     }
-//   } catch (error) {
-//     console.error('清除翻译结果失败:', error)
-//   }
-// }
+// 计算总页数
+const totalPages = computed(() => {
+  return Math.ceil(filteredResults.value.length / pageSize.value) || 1
+})
+
+// 获取当前页的结果
+const paginatedResults = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredResults.value.slice(start, end)
+})
+
+// 计算当前页的起始和结束项
+const startItem = computed(() => {
+  return filteredResults.value.length > 0 ? (currentPage.value - 1) * pageSize.value + 1 : 0
+})
+
+const endItem = computed(() => {
+  const end = currentPage.value * pageSize.value
+  return end > filteredResults.value.length ? filteredResults.value.length : end
+})
+
+// 监听过滤器变化，重置页码
+watch([search, selectedType, selectedStatus, dateRange, sortBy, sortDesc], () => {
+  currentPage.value = 1
+})
+
+// 监听页面大小变化
+watch(pageSize, () => {
+  currentPage.value = 1
+})
+
+// 加载翻译结果
+async function loadResults() {
+  try {
+    const response = await ipcRenderer?.invoke('read-translate-results')
+    if (response?.success) {
+      results.value = response.results
+    } else {
+      console.error('加载翻译结果失败:', response?.error)
+    }
+  } catch (error) {
+    console.error('加载翻译结果失败:', error)
+  }
+}
+
+// 在组件挂载时加载结果
+onMounted(() => {
+  loadResults()
+})
 
 // 导出翻译结果
 const exportResults = async () => {
@@ -119,8 +154,8 @@ const exportResults = async () => {
         `"${result.translatedContent.replace(/"/g, '""')}"`,
         result.timestamp,
         result.status,
-        result.fileName || '',
-        result.filePath || ''
+        result.fileName ? `"${getFileName(result.fileName)}"` : '',
+        result.filePath ? `"${getFileName(result.filePath)}"` : ''
       ].join(',')
     })
 
@@ -134,7 +169,7 @@ const exportResults = async () => {
       '时间',
       '状态',
       '文件名',
-      '文件路径'
+      '输出文件'
     ].join(',')
 
     const csvData = [headers, ...csvContent].join('\n')
@@ -172,28 +207,62 @@ const clearFilters = () => {
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
+// 检查文件路径是否完整，如果不是完整路径则显示错误提示
+const isValidPath = (filePath: string | undefined): boolean => {
+  if (!filePath) return false
+  // 检查是否是有效的路径格式
+  return /^([a-zA-Z]:\\|\\\\|\/|~\/|\.\/|\.\.\/|[a-zA-Z]:\/)/i.test(filePath)
+}
+
+// 打开文件
 const openFile = async (filePath: string | undefined) => {
-  if (!filePath) return
+  if (!filePath) {
+    showError('文件路径为空')
+    return
+  }
+  
+  if (!isValidPath(filePath)) {
+    showError(`文件路径不完整或无效: ${filePath}`)
+    return
+  }
+  
   try {
     const result = await ipcRenderer?.invoke('open-file', filePath)
     if (!result?.success) {
-      console.error('打开文件失败:', result?.error)
+      showError(`打开文件失败: ${result?.error}`)
     }
   } catch (error) {
-    console.error('打开文件失败:', error)
+    showError(`打开文件失败: ${error}`)
   }
 }
 
+// 打开文件所在文件夹
 const openFileLocation = async (filePath: string | undefined) => {
-  if (!filePath) return
+  if (!filePath) {
+    showError('文件路径为空')
+    return
+  }
+  
+  if (!isValidPath(filePath)) {
+    showError(`文件路径不完整或无效: ${filePath}`)
+    return
+  }
+  
   try {
     const result = await ipcRenderer?.invoke('open-file-location', filePath)
     if (!result?.success) {
-      console.error('打开文件夹失败:', result?.error)
+      showError(`打开文件夹失败: ${result?.error}`)
     }
   } catch (error) {
-    console.error('打开文件夹失败:', error)
+    showError(`打开文件夹失败: ${error}`)
   }
+}
+
+// 显示错误消息
+const showError = (message: string) => {
+  snackbarColor.value = 'error'
+  snackbarText.value = message
+  showSnackbar.value = true
 }
 
 // 格式化日期
@@ -237,7 +306,7 @@ const getDirectoryPath = (filePath: string | undefined) => {
 // 打开重命名对话框
 const openRenameDialog = (result: TranslateResult, type: 'source' | 'output') => {
   renameTarget.value = { result, type }
-  newFileName.value = type === 'source' ? result.fileName : getFileName(result.filePath)
+  newFileName.value = type === 'source' ? getFileName(result.fileName) : getFileName(result.filePath)
   renameDialog.value = true
 }
 
@@ -266,7 +335,7 @@ const renameFile = async () => {
     if (renameResult?.success) {
       // 根据类型更新相应的文件名或路径
       if (type === 'source') {
-        result.fileName = newFileName.value
+        result.fileName = newPath // 更新为完整路径
       } else {
         result.filePath = newPath
       }
@@ -300,6 +369,34 @@ const renameFile = async () => {
 
   showSnackbar.value = true
   renameDialog.value = false
+}
+
+// 添加查看字幕翻译结果的方法
+const viewSubtitleResult = (result: TranslateResult) => {
+  if (result.type === '字幕') {
+    // 将字幕结果加载到store中
+    translateStore.setSubtitleFile(result.fileName || '')
+    translateStore.setSourceSubtitles(result.sourceContent)
+    translateStore.setTranslatedSubtitles(result.translatedContent)
+    translateStore.setOutputPath(result.filePath || '')
+    
+    // 计算字幕数量
+    const sourceLines = result.sourceContent.split('\n').filter(line => line.trim()).length
+    const translatedLines = result.translatedContent.split('\n').filter(line => line.trim()).length
+    
+    // 更新翻译进度
+    translateStore.updateTranslationProgress(translatedLines, sourceLines)
+    
+    // 跳转到字幕翻译页面
+    navigateToPage('字幕翻译')
+  } else {
+    showDetails(result)
+  }
+}
+
+// 添加导航方法
+const navigateToPage = (page: string) => {
+  ipcRenderer?.send('navigate-to-page', page)
 }
 </script>
 
@@ -369,7 +466,7 @@ const renameFile = async () => {
 
       <!-- 结果列表 -->
       <v-card-text class="px-0">
-        <v-table fixed-header height="calc(100vh - 300px)">
+        <v-table fixed-header height="calc(100vh - 380px)">
           <thead>
             <tr>
               <th class="text-left">类型</th>
@@ -383,7 +480,7 @@ const renameFile = async () => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="result in filteredResults" :key="result.id">
+            <tr v-for="result in paginatedResults" :key="result.id">
               <td>
                 <v-chip
                   :color="result.type === '文本' ? 'primary' : result.type === '文档' ? 'success' : 'info'"
@@ -395,8 +492,8 @@ const renameFile = async () => {
               <td>{{ result.sourceLanguage }}</td>
               <td>{{ result.targetLanguage }}</td>
               <td class="text-content">
-                <div class="text-preview" v-tooltip.top="result.type === '文本' ? result.sourceContent : result.fileName">
-                  {{ result.type === '文本' ? formatLongText(result.sourceContent) : result.fileName }}
+                <div class="text-preview" v-tooltip.top="result.type === '文本' ? result.sourceContent : getFileName(result.fileName)">
+                  {{ result.type === '文本' ? formatLongText(result.sourceContent) : getFileName(result.fileName) }}
                 </div>
                 <div v-if="result.fileName" class="file-actions">
                   <div class="action-group">
@@ -478,13 +575,47 @@ const renameFile = async () => {
                   icon="mdi-eye"
                   variant="text"
                   size="small"
-                  @click="showDetails(result)"
+                  @click="viewSubtitleResult(result)"
                   color="primary"
                 ></v-btn>
               </td>
             </tr>
           </tbody>
         </v-table>
+      </v-card-text>
+
+      <!-- 分页控件 -->
+      <v-card-text class="pagination d-flex align-center justify-space-between">
+        <div class="text-caption text-grey d-flex align-center">
+          <span>第 {{ startItem }}-{{ endItem }} 条，共 {{ filteredResults.length }} 条</span>
+        </div>
+        <div class="d-flex align-center gap-4">
+          <v-select
+            v-model="pageSize"
+            :items="pageSizeOptions"
+            item-title="title"
+            item-value="value"
+            label="每页显示"
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="page-size-select"
+          ></v-select>
+          <v-pagination
+            v-model="currentPage"
+            :length="totalPages"
+            :total-visible="7"
+            density="compact"
+            class="pagination-control"
+            :prev-icon="'mdi-chevron-left'"
+            :next-icon="'mdi-chevron-right'"
+            :first-icon="'mdi-chevron-double-left'"
+            :last-icon="'mdi-chevron-double-right'"
+            show-first-last
+            rounded
+            active-color="primary"
+          ></v-pagination>
+        </div>
       </v-card-text>
     </v-card>
 
@@ -580,7 +711,7 @@ const renameFile = async () => {
       <v-card>
         <v-card-title>重命名文件</v-card-title>
         <v-card-text>
-          <div class="text-body-2 mb-4">当前文件名：{{ renameTarget?.result.fileName || getFileName(renameTarget?.result.filePath) }}</div>
+          <div class="text-body-2 mb-4">当前文件名：{{ renameTarget?.type === 'source' ? getFileName(renameTarget.result.fileName) : getFileName(renameTarget?.result.filePath) }}</div>
           <v-text-field
             v-model="newFileName"
             label="新文件名"
@@ -742,6 +873,44 @@ const renameFile = async () => {
 
 :deep(.v-card-text) {
   padding-top: 20px;
+}
+
+/* 分页相关样式 */
+.pagination {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  padding: 16px 24px;
+  margin: 0;
+  background: rgb(var(--v-theme-surface));
+}
+
+.page-size-select {
+  width: 120px;
+}
+
+.pagination-control {
+  margin: 0;
+}
+
+.gap-4 {
+  gap: 16px;
+}
+
+/* 确保分页控件在小屏幕上也能正确显示 */
+@media (max-width: 768px) {
+  .pagination {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .pagination .d-flex {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .page-size-select {
+    width: 100px;
+  }
 }
 
 /* 自定义滚动条样式 */

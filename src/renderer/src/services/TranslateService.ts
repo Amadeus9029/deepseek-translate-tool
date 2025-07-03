@@ -1,4 +1,5 @@
 import { settings } from './SettingsService'
+import { getOllamaTranslateService } from './OllamaTranslateService'
 
 declare global {
   interface Window {
@@ -43,16 +44,46 @@ export class TranslateService {
     }
 
     try {
+      console.log('发送翻译请求到DeepSeek API:', options.hostname + options.path)
       const responseData = await window.api.makeHttpsRequest(options, data)
-      const response = JSON.parse(responseData)
-      if (response.choices && response.choices[0] && response.choices[0].message) {
-        return response.choices[0].message.content.trim()
-      } else {
-        throw new Error('Invalid response format')
+      
+      try {
+        const response = JSON.parse(responseData)
+        
+        // 检查是否有错误信息
+        if (response.error) {
+          console.error('DeepSeek API返回错误:', response.error)
+          throw new Error(`API错误: ${response.error.message || JSON.stringify(response.error)}`)
+        }
+        
+        if (response.choices && response.choices[0] && response.choices[0].message) {
+          return response.choices[0].message.content.trim()
+        } else {
+          console.error('无效的API响应格式:', response)
+          throw new Error('无效的API响应格式，请检查API Key是否正确')
+        }
+      } catch (parseError) {
+        console.error('解析API响应失败:', parseError, '原始响应:', responseData)
+        throw new Error('解析API响应失败，请检查网络连接和API Key')
       }
     } catch (error) {
-      console.error('Translation request failed:', error)
-      throw error
+      console.error('翻译请求失败:', error)
+      
+      // 提供更具体的错误信息
+      if (error instanceof Error) {
+        // 检查常见错误
+        if (error.message.includes('401')) {
+          throw new Error('API Key无效或已过期，请检查您的API Key设置')
+        } else if (error.message.includes('403')) {
+          throw new Error('API访问被拒绝，请检查API Key权限')
+        } else if (error.message.includes('429')) {
+          throw new Error('API请求过于频繁或已超出配额限制')
+        } else if (error.message.includes('ENOTFOUND') || error.message.includes('ETIMEDOUT')) {
+          throw new Error('无法连接到DeepSeek API，请检查网络连接')
+        }
+        throw error
+      }
+      throw new Error('翻译请求失败，请检查网络连接和API Key')
     }
   }
 
@@ -127,8 +158,52 @@ export class TranslateService {
   }
 }
 
+// 统一的翻译服务接口
+export class UnifiedTranslateService {
+  /**
+   * 翻译文本（统一接口）
+   */
+  async translateText(
+    text: string,
+    sourceLang: string,
+    targetLang: string,
+    terms: [string, string][] = [],
+    onProgress?: (current: number, total: number) => void
+  ): Promise<string> {
+    if (settings.value.useOllama) {
+      // 使用 Ollama
+      const ollamaService = getOllamaTranslateService()
+      return await ollamaService.translateText(text, sourceLang, targetLang, terms, onProgress)
+    } else {
+      // 使用 DeepSeek API
+      const deepseekService = getTranslateService()
+      return await deepseekService.translateText(text, sourceLang, targetLang, terms, onProgress)
+    }
+  }
+
+  /**
+   * 测试连接
+   */
+  async testConnection(): Promise<boolean> {
+    if (settings.value.useOllama) {
+      const ollamaService = getOllamaTranslateService()
+      return await ollamaService.testConnection()
+    } else {
+      // 对于 DeepSeek API，我们可以尝试一个简单的请求
+      try {
+        const deepseekService = getTranslateService()
+        await deepseekService.translateText('test', '中文', '英文')
+        return true
+      } catch (error) {
+        return false
+      }
+    }
+  }
+}
+
 // 导出单例实例
 let translateService: TranslateService | null = null
+let unifiedTranslateService: UnifiedTranslateService | null = null
 
 export function initTranslateService(apiKey: string): void {
   translateService = new TranslateService(apiKey)
@@ -145,4 +220,11 @@ export function getTranslateService(): TranslateService {
   }
   
   return translateService
+}
+
+export function getUnifiedTranslateService(): UnifiedTranslateService {
+  if (!unifiedTranslateService) {
+    unifiedTranslateService = new UnifiedTranslateService()
+  }
+  return unifiedTranslateService
 } 

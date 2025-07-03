@@ -6,7 +6,7 @@
         <div class="language-settings">
           <div class="source-language">
             <v-autocomplete
-              v-model="sourceLanguage"
+              v-model="store.textTranslate.sourceLanguage"
               :items="availableLanguages"
               label="源语言"
               hide-details
@@ -25,7 +25,7 @@
               class="swap-btn"
             ></v-btn>
             <v-autocomplete
-              v-model="targetLanguage"
+              v-model="store.textTranslate.targetLanguage"
               :items="availableLanguages"
               label="目标语言"
               hide-details
@@ -50,18 +50,18 @@
                 variant="text" 
                 density="compact" 
                 @click="clearSourceText"
-                :disabled="!sourceText || isTranslating"
+                :disabled="!store.textTranslate.sourceText || store.textTranslate.isTranslating"
               >清空</v-btn>
             </div>
             <v-textarea
-              v-model="sourceText"
+              v-model="store.textTranslate.sourceText"
               :placeholder="'请输入要翻译的文本'"
               :rows="8"
               auto-grow
               hide-details
               variant="outlined"
               class="text-input"
-              :disabled="isTranslating"
+              :disabled="store.textTranslate.isTranslating"
             ></v-textarea>
           </div>
 
@@ -73,11 +73,11 @@
                 variant="text" 
                 density="compact" 
                 @click="copyResult"
-                :disabled="!translatedText"
+                :disabled="!store.textTranslate.translatedText"
               >复制</v-btn>
             </div>
             <v-textarea
-              v-model="translatedText"
+              v-model="store.textTranslate.translatedText"
               placeholder="翻译结果将显示在这里"
               :rows="8"
               auto-grow
@@ -96,10 +96,10 @@
             size="large" 
             class="translate-btn" 
             @click="startTranslate"
-            :loading="isTranslating"
-            :disabled="!sourceText || isTranslating"
+            :loading="store.textTranslate.isTranslating"
+            :disabled="!store.textTranslate.sourceText || store.textTranslate.isTranslating"
           >
-            {{ isTranslating ? '翻译中...' : '翻译' }}
+            {{ store.textTranslate.isTranslating ? '翻译中...' : '翻译' }}
           </v-btn>
         </div>
       </v-card-text>
@@ -108,9 +108,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { getTranslateService } from '../services/TranslateService'
+import { onMounted } from 'vue'
+import { getUnifiedTranslateService } from '../services/TranslateService'
 import { availableLanguages, type LanguageOption } from '../constants/languages'
+import { useTranslateStore } from '../stores/translateStore'
 
 interface TranslateResult {
   type: '文本' | '文档' | '字幕'
@@ -136,51 +137,57 @@ interface LogEntry {
   translateType: string
 }
 
-const sourceLanguage = ref<LanguageOption>({ text: '英语', value: '英语' })
-const targetLanguage = ref<LanguageOption>({ text: '中文', value: '中文' })
-const sourceText = ref('')
-const translatedText = ref('')
-const isTranslating = ref(false)
-
+const store = useTranslateStore()
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
+
+// 组件挂载时初始化状态
+onMounted(() => {
+  // 如果状态为空，设置默认值
+  if (!store.textTranslate.sourceLanguage) {
+    store.textTranslate.sourceLanguage = { text: '英语', value: '英语' }
+  }
+  if (!store.textTranslate.targetLanguage) {
+    store.textTranslate.targetLanguage = { text: '中文', value: '中文' }
+  }
+})
 
 // 清空源文本
 const clearSourceText = () => {
-  sourceText.value = ''
-  translatedText.value = ''
+  store.textTranslate.sourceText = ''
+  store.textTranslate.translatedText = ''
 }
 
 // 复制翻译结果
 const copyResult = () => {
-  if (translatedText.value) {
-    navigator.clipboard.writeText(translatedText.value)
+  if (store.textTranslate.translatedText) {
+    navigator.clipboard.writeText(store.textTranslate.translatedText)
   }
 }
 
 // 交换语言
 const swapLanguages = () => {
-  const temp = sourceLanguage.value
-  sourceLanguage.value = targetLanguage.value
-  targetLanguage.value = temp
+  const temp = store.textTranslate.sourceLanguage
+  store.textTranslate.sourceLanguage = store.textTranslate.targetLanguage
+  store.textTranslate.targetLanguage = temp
 
   // 如果已经有翻译结果，也交换文本
-  if (translatedText.value) {
-    const tempText = sourceText.value
-    sourceText.value = translatedText.value
-    translatedText.value = tempText
+  if (store.textTranslate.translatedText) {
+    const tempText = store.textTranslate.sourceText
+    store.textTranslate.sourceText = store.textTranslate.translatedText
+    store.textTranslate.translatedText = tempText
   }
 }
 
 // 开始翻译
 const startTranslate = async () => {
-  if (!sourceText.value || isTranslating.value) return
+  if (!store.textTranslate.sourceText || store.textTranslate.isTranslating) return
 
   // 创建日志对象
   const startTime = new Date().toISOString()
   const logEntry: LogEntry = {
     fileName: '文本翻译',
-    sourceLanguage: sourceLanguage.value.text,
-    targetLanguage: targetLanguage.value.text,
+    sourceLanguage: store.textTranslate.sourceLanguage?.text || '',
+    targetLanguage: store.textTranslate.targetLanguage?.text || '',
     translateCount: 1,
     startTime,
     completed: false,
@@ -189,27 +196,27 @@ const startTranslate = async () => {
 
   const translateResult: TranslateResult = {
     type: '文本',
-    sourceLanguage: sourceLanguage.value.text,
-    targetLanguage: targetLanguage.value.text,
-    sourceContent: sourceText.value,
+    sourceLanguage: store.textTranslate.sourceLanguage?.text || '',
+    targetLanguage: store.textTranslate.targetLanguage?.text || '',
+    sourceContent: store.textTranslate.sourceText,
     translatedContent: '',
     timestamp: startTime,
     status: '成功'
   }
 
   try {
-    isTranslating.value = true
-    const translateService = getTranslateService()
+    store.textTranslate.isTranslating = true
+    const translateService = getUnifiedTranslateService()
 
     const result = await translateService.translateText(
-      sourceText.value,
-      sourceLanguage.value.value,
-      targetLanguage.value.value,
+      store.textTranslate.sourceText,
+      store.textTranslate.sourceLanguage?.value || '英语',
+      store.textTranslate.targetLanguage?.value || '中文',
       [], // 这里可以添加术语表支持
       () => {} // 进度回调
     )
 
-    translatedText.value = result
+    store.textTranslate.translatedText = result
     translateResult.translatedContent = result
 
     // 更新日志对象
@@ -229,10 +236,22 @@ const startTranslate = async () => {
     await ipcRenderer?.invoke('save-translate-result', translateResult)
   } catch (error) {
     console.error('翻译失败:', error)
-    translatedText.value = '翻译失败，请重试'
+    
+    // 提取错误信息
+    const errorMessage = error instanceof Error ? error.message : '未知错误'
+    
+    // 设置更友好的错误提示
+    if (errorMessage.includes('API Key')) {
+      store.textTranslate.translatedText = `翻译失败: ${errorMessage}\n\n请检查您的API Key是否正确设置，并确保它有足够的余额。`
+    } else if (errorMessage.includes('网络') || errorMessage.includes('连接')) {
+      store.textTranslate.translatedText = `翻译失败: ${errorMessage}\n\n请检查您的网络连接是否正常，以及是否可以访问DeepSeek API。`
+    } else if (errorMessage.includes('配额') || errorMessage.includes('429')) {
+      store.textTranslate.translatedText = `翻译失败: ${errorMessage}\n\n您的API请求次数已达到限制，请稍后再试或检查账户余额。`
+    } else {
+      store.textTranslate.translatedText = `翻译失败: ${errorMessage}\n\n如果问题持续存在，请尝试切换到Ollama本地模式。`
+    }
     
     // 更新错误日志
-    const errorMessage = error instanceof Error ? error.message : '未知错误'
     Object.assign(logEntry, {
       endTime: new Date().toISOString(),
       duration: Math.round((new Date().getTime() - new Date(startTime).getTime()) / 1000),
@@ -244,12 +263,12 @@ const startTranslate = async () => {
     await ipcRenderer?.invoke('save-log', logEntry)
 
     translateResult.status = '失败'
-    translateResult.translatedContent = '翻译失败'
+    translateResult.translatedContent = '翻译失败: ' + errorMessage
     
     // 保存失败记录
     await ipcRenderer?.invoke('save-translate-result', translateResult)
   } finally {
-    isTranslating.value = false
+    store.textTranslate.isTranslating = false
   }
 }
 </script>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useTheme } from 'vuetify'
 import TextTranslate from './pages/TextTranslate.vue'
 import DocumentTranslate from './pages/DocumentTranslate.vue'
@@ -31,6 +31,48 @@ const theme = useTheme()
 // 计算当前是否是深色模式
 const isDark = computed(() => theme.global.current.value.dark)
 
+// 添加一个key来强制重新渲染组件
+const componentKey = ref(0)
+
+// 监听菜单切换，当切换到日志或翻译结果时，强制重新渲染组件
+watch(selectedMenu, (newValue) => {
+  // 每次切换菜单都增加key值，强制重新渲染组件
+  componentKey.value++
+  
+  // 从localStorage读取当前主题设置并应用
+  const savedTheme = localStorage.getItem('theme-mode')
+  if (savedTheme) {
+    if (savedTheme === 'system') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      theme.global.name.value = prefersDark ? 'dark' : 'light'
+    } else {
+      theme.global.name.value = savedTheme
+    }
+  }
+})
+
+// 根据选中的菜单返回对应的组件
+const currentComponent = computed(() => {
+  switch (selectedMenu.value) {
+    case '文本翻译':
+      return TextTranslate
+    case '文档翻译':
+      return DocumentTranslate
+    case '字幕翻译':
+      return VideoTranslate
+    case '翻译结果':
+      return TranslateResults
+    case '日志':
+      return TranslateLog
+    case '设置':
+      return Settings
+    case '关于':
+      return About
+    default:
+      return TextTranslate
+  }
+})
+
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 const minimize = () => ipcRenderer && ipcRenderer.send('window-minimize')
 const toggleMaximize = () => {
@@ -52,6 +94,11 @@ if (ipcRenderer) {
   })
   ipcRenderer.on('window-unmaximized', () => {
     isMaximized.value = false
+  })
+  
+  // 监听页面切换请求
+  ipcRenderer.on('change-page', (_, page) => {
+    selectedMenu.value = page
   })
 }
 </script>
@@ -118,28 +165,9 @@ if (ipcRenderer) {
           <v-main data-v-7a7a37b1 class="v-main no-scrollbar"
             style="--v-layout-left: 210px; --v-layout-right: 0px; --v-layout-top: 0px; --v-layout-bottom: 0px;">
             <div class="main-content-wrapper">
-              <template v-if="selectedMenu === '文本翻译'">
-                <TextTranslate />
-              </template>
-              <template v-else-if="selectedMenu === '文档翻译'">
-                <DocumentTranslate />
-              </template>
-              <template v-else-if="selectedMenu === '字幕翻译'">
-                <VideoTranslate />
-              </template>
-              <template v-else-if="selectedMenu === '翻译结果'">
-                <TranslateResults />
-              </template>
-              <template v-else-if="selectedMenu === '日志'">
-                <TranslateLog />
-              </template>
-              <template v-else-if="selectedMenu === '设置'">
-                <Settings />
-              </template>
-              <template v-else-if="selectedMenu === '关于'">
-                <About />
-              </template>
-              <!-- 其他页面可在此添加 -->
+              <keep-alive>
+                <component :is="currentComponent" :key="componentKey" />
+              </keep-alive>
             </div>
           </v-main>
         </div>

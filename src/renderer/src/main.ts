@@ -1,6 +1,7 @@
 import './assets/main.css'
 
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 // Vuetify
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
@@ -48,9 +49,14 @@ const vuetify = createVuetify({
   }
 })
 
+// 创建Pinia实例
+const pinia = createPinia()
+
 // 创建Vue应用
 const app = createApp(App)
-app.use(vuetify).mount('#app')
+app.use(vuetify)
+app.use(pinia)
+app.mount('#app')
 
 const updateTheme = (mode: string) => {
   localStorage.setItem('theme-mode', mode)
