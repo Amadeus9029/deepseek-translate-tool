@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useTheme } from 'vuetify'
 import { useTranslateStore } from '../stores/translateStore'
 
@@ -28,31 +28,25 @@ const isDark = computed(() => theme.global.current.value.dark)
 // 模拟数据
 const results = ref<TranslateResult[]>([])
 
-// 加载翻译结果
-async function loadResults() {
-  try {
-    const response = await ipcRenderer?.invoke('read-translate-results')
-    if (response?.success) {
-      results.value = response.results
-    } else {
-      console.error('加载翻译结果失败:', response?.error)
-    }
-  } catch (error) {
-    console.error('加载翻译结果失败:', error)
-  }
-}
-
-// 在组件挂载时加载结果
-onMounted(() => {
-  loadResults()
-})
-
+// 过滤相关
 const search = ref('')
 const selectedType = ref<string[]>([])
 const selectedStatus = ref<string[]>([])
 const dateRange = ref([null, null])
 const sortBy = ref('timestamp')
 const sortDesc = ref(true)
+
+// 分页相关
+const currentPage = ref(1)
+const pageSize = ref(10)
+const pageSizeOptions = [
+  { title: '10条/页', value: 10 },
+  { title: '20条/页', value: 20 },
+  { title: '50条/页', value: 50 },
+  { title: '100条/页', value: 100 }
+]
+
+// 其他状态
 const selectedResult = ref<TranslateResult | null>(null)
 const detailDialog = ref(false)
 const showSnackbar = ref(false)
@@ -95,19 +89,57 @@ const filteredResults = computed(() => {
       return modifier * a[sortBy.value].localeCompare(b[sortBy.value])
     })
 })
-// 清除所有翻译结果
-// const clearResults = async () => {
-//   try {
-//     const response = await ipcRenderer?.invoke('clear-translate-results')
-//     if (response?.success) {
-//       results.value = []
-//     } else {
-//       console.error('清除翻译结果失败:', response?.error)
-//     }
-//   } catch (error) {
-//     console.error('清除翻译结果失败:', error)
-//   }
-// }
+
+// 计算总页数
+const totalPages = computed(() => {
+  return Math.ceil(filteredResults.value.length / pageSize.value) || 1
+})
+
+// 获取当前页的结果
+const paginatedResults = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredResults.value.slice(start, end)
+})
+
+// 计算当前页的起始和结束项
+const startItem = computed(() => {
+  return filteredResults.value.length > 0 ? (currentPage.value - 1) * pageSize.value + 1 : 0
+})
+
+const endItem = computed(() => {
+  const end = currentPage.value * pageSize.value
+  return end > filteredResults.value.length ? filteredResults.value.length : end
+})
+
+// 监听过滤器变化，重置页码
+watch([search, selectedType, selectedStatus, dateRange, sortBy, sortDesc], () => {
+  currentPage.value = 1
+})
+
+// 监听页面大小变化
+watch(pageSize, () => {
+  currentPage.value = 1
+})
+
+// 加载翻译结果
+async function loadResults() {
+  try {
+    const response = await ipcRenderer?.invoke('read-translate-results')
+    if (response?.success) {
+      results.value = response.results
+    } else {
+      console.error('加载翻译结果失败:', response?.error)
+    }
+  } catch (error) {
+    console.error('加载翻译结果失败:', error)
+  }
+}
+
+// 在组件挂载时加载结果
+onMounted(() => {
+  loadResults()
+})
 
 // 导出翻译结果
 const exportResults = async () => {
@@ -434,7 +466,7 @@ const navigateToPage = (page: string) => {
 
       <!-- 结果列表 -->
       <v-card-text class="px-0">
-        <v-table fixed-header height="calc(100vh - 300px)">
+        <v-table fixed-header height="calc(100vh - 380px)">
           <thead>
             <tr>
               <th class="text-left">类型</th>
@@ -448,7 +480,7 @@ const navigateToPage = (page: string) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="result in filteredResults" :key="result.id">
+            <tr v-for="result in paginatedResults" :key="result.id">
               <td>
                 <v-chip
                   :color="result.type === '文本' ? 'primary' : result.type === '文档' ? 'success' : 'info'"
@@ -550,6 +582,40 @@ const navigateToPage = (page: string) => {
             </tr>
           </tbody>
         </v-table>
+      </v-card-text>
+
+      <!-- 分页控件 -->
+      <v-card-text class="pagination d-flex align-center justify-space-between">
+        <div class="text-caption text-grey d-flex align-center">
+          <span>第 {{ startItem }}-{{ endItem }} 条，共 {{ filteredResults.length }} 条</span>
+        </div>
+        <div class="d-flex align-center gap-4">
+          <v-select
+            v-model="pageSize"
+            :items="pageSizeOptions"
+            item-title="title"
+            item-value="value"
+            label="每页显示"
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="page-size-select"
+          ></v-select>
+          <v-pagination
+            v-model="currentPage"
+            :length="totalPages"
+            :total-visible="7"
+            density="compact"
+            class="pagination-control"
+            :prev-icon="'mdi-chevron-left'"
+            :next-icon="'mdi-chevron-right'"
+            :first-icon="'mdi-chevron-double-left'"
+            :last-icon="'mdi-chevron-double-right'"
+            show-first-last
+            rounded
+            active-color="primary"
+          ></v-pagination>
+        </div>
       </v-card-text>
     </v-card>
 
@@ -807,6 +873,44 @@ const navigateToPage = (page: string) => {
 
 :deep(.v-card-text) {
   padding-top: 20px;
+}
+
+/* 分页相关样式 */
+.pagination {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  padding: 16px 24px;
+  margin: 0;
+  background: rgb(var(--v-theme-surface));
+}
+
+.page-size-select {
+  width: 120px;
+}
+
+.pagination-control {
+  margin: 0;
+}
+
+.gap-4 {
+  gap: 16px;
+}
+
+/* 确保分页控件在小屏幕上也能正确显示 */
+@media (max-width: 768px) {
+  .pagination {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .pagination .d-flex {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .page-size-select {
+    width: 100px;
+  }
 }
 
 /* 自定义滚动条样式 */

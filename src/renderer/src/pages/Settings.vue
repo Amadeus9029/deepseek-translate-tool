@@ -430,7 +430,8 @@ const saveSettings = async () => {
       subtitleBatchSize: Number(subtitleBatchSize.value),
       useOllama: useOllama.value,
       ollamaUrl: ollamaUrl.value,
-      ollamaModel: ollamaModel.value
+      ollamaModel: ollamaModel.value,
+      themeMode: themeMode.value
     })
     if (!result?.success) {
       snackbarColor.value = 'error'

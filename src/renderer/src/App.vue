@@ -38,6 +38,17 @@ const componentKey = ref(0)
 watch(selectedMenu, (newValue) => {
   // 每次切换菜单都增加key值，强制重新渲染组件
   componentKey.value++
+  
+  // 从localStorage读取当前主题设置并应用
+  const savedTheme = localStorage.getItem('theme-mode')
+  if (savedTheme) {
+    if (savedTheme === 'system') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      theme.global.name.value = prefersDark ? 'dark' : 'light'
+    } else {
+      theme.global.name.value = savedTheme
+    }
+  }
 })
 
 // 根据选中的菜单返回对应的组件
