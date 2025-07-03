@@ -415,6 +415,9 @@ const saveSettings = async () => {
   
   // 更新Pinia状态
   store.updateSettings(newSettings)
+  
+  // 立即应用主题设置
+  updateTheme(themeMode.value)
 
   // 保存设置到主进程
   try {

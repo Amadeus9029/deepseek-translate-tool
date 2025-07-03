@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useTheme } from 'vuetify'
 import TextTranslate from './pages/TextTranslate.vue'
 import DocumentTranslate from './pages/DocumentTranslate.vue'
@@ -8,6 +8,7 @@ import TranslateLog from './pages/TranslateLog.vue'
 import TranslateResults from './pages/TranslateResults.vue'
 import Settings from './pages/Settings.vue'
 import About from './pages/About.vue'
+import { settings } from './services/SettingsService'
 
 const drawer = ref(true)
 const isMaximized = ref(false)
@@ -39,16 +40,25 @@ watch(selectedMenu, (newValue) => {
   // 每次切换菜单都增加key值，强制重新渲染组件
   componentKey.value++
   
-  // 从localStorage读取当前主题设置并应用
-  const savedTheme = localStorage.getItem('theme-mode')
-  if (savedTheme) {
-    if (savedTheme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      theme.global.name.value = prefersDark ? 'dark' : 'light'
-    } else {
-      theme.global.name.value = savedTheme
-    }
+  // 从设置中获取当前主题设置并应用
+  applyThemeFromSettings()
+})
+
+// 从设置中获取并应用主题
+const applyThemeFromSettings = () => {
+  const themeMode = settings.value.themeMode || localStorage.getItem('theme-mode') || 'system'
+  
+  if (themeMode === 'system') {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    theme.global.name.value = prefersDark ? 'dark' : 'light'
+  } else {
+    theme.global.name.value = themeMode
   }
+}
+
+// 在组件挂载时应用主题
+onMounted(() => {
+  applyThemeFromSettings()
 })
 
 // 根据选中的菜单返回对应的组件
