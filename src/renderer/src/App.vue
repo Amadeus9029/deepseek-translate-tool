@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useTheme } from 'vuetify'
 import TextTranslate from './pages/TextTranslate.vue'
 import DocumentTranslate from './pages/DocumentTranslate.vue'
@@ -30,6 +30,15 @@ const theme = useTheme()
 
 // 计算当前是否是深色模式
 const isDark = computed(() => theme.global.current.value.dark)
+
+// 添加一个key来强制重新渲染组件
+const componentKey = ref(0)
+
+// 监听菜单切换，当切换到日志或翻译结果时，强制重新渲染组件
+watch(selectedMenu, (newValue) => {
+  // 每次切换菜单都增加key值，强制重新渲染组件
+  componentKey.value++
+})
 
 // 根据选中的菜单返回对应的组件
 const currentComponent = computed(() => {
@@ -74,6 +83,11 @@ if (ipcRenderer) {
   })
   ipcRenderer.on('window-unmaximized', () => {
     isMaximized.value = false
+  })
+  
+  // 监听页面切换请求
+  ipcRenderer.on('change-page', (_, page) => {
+    selectedMenu.value = page
   })
 }
 </script>
@@ -141,7 +155,7 @@ if (ipcRenderer) {
             style="--v-layout-left: 210px; --v-layout-right: 0px; --v-layout-top: 0px; --v-layout-bottom: 0px;">
             <div class="main-content-wrapper">
               <keep-alive>
-                <component :is="currentComponent" />
+                <component :is="currentComponent" :key="componentKey" />
               </keep-alive>
             </div>
           </v-main>

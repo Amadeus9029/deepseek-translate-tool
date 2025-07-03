@@ -1133,7 +1133,7 @@ function setupIPC() {
                   'qwen3': ['0.6b', '1.7b', '4b', '8b', '14b', '30b', '32b', '235b'],
                   'phi3': ['3.8b', '14b'],
                   'phi4': ['14b'],
-                  'deepseek-r1': ['1.5b', '7b', '8b', '14b', '32b', '70b', '671b'],
+                  'deepseek-r1': ['8b', '7b', '14b', '32b', '70b', '1.5b', '671b'],
                   'codellama': ['7b', '13b', '34b', '70b'],
                   'llava': ['7b', '13b', '34b']
                 };
@@ -1185,6 +1185,14 @@ function setupIPC() {
       }
     });
   });
+
+  // 导航到特定页面
+  ipcMain.on('navigate-to-page', (_, page) => {
+    const win = BrowserWindow.getFocusedWindow()
+    if (win) {
+      win.webContents.send('change-page', page)
+    }
+  })
 }
 
 function createWindow(): BrowserWindow {

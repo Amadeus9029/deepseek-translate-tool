@@ -17,6 +17,12 @@ interface Settings {
   ollamaModel: string;
 }
 
+// Ollama模型数据接口 - 简化版
+interface OllamaModelData {
+  availableModels: Array<{title: string, value: string, description?: string}>;
+  modelParams: Record<string, string[]>;
+}
+
 // 默认设置
 const defaultSettings: Settings = {
   apiKey: '',
@@ -34,8 +40,17 @@ const defaultSettings: Settings = {
   ollamaModel: 'deepseek-r1:7b'
 }
 
+// 默认Ollama模型数据 - 简化版
+const defaultOllamaModelData: OllamaModelData = {
+  availableModels: [],
+  modelParams: {}
+}
+
 // 创建响应式的设置存储
 const settings = ref<Settings>({ ...defaultSettings })
+
+// 创建响应式的Ollama模型数据存储
+const ollamaModelData = ref<OllamaModelData>({ ...defaultOllamaModelData })
 
 // 从localStorage加载设置
 const loadSettings = () => {
@@ -48,12 +63,38 @@ const loadSettings = () => {
       console.error('加载设置失败:', e)
     }
   }
+  
+  // 加载Ollama模型数据
+  const savedOllamaModelData = localStorage.getItem('ollama-model-data')
+  if (savedOllamaModelData) {
+    try {
+      const parsed = JSON.parse(savedOllamaModelData)
+      ollamaModelData.value = { ...defaultOllamaModelData, ...parsed }
+    } catch (e) {
+      console.error('加载Ollama模型数据失败:', e)
+    }
+  }
 }
 
 // 保存设置到localStorage
 const saveSettings = (newSettings: Partial<Settings>) => {
   settings.value = { ...settings.value, ...newSettings }
   localStorage.setItem('app-settings', JSON.stringify(settings.value))
+}
+
+// 保存Ollama模型数据到localStorage
+const saveOllamaModelData = (data: Partial<OllamaModelData>) => {
+  ollamaModelData.value = { ...ollamaModelData.value, ...data }
+  localStorage.setItem('ollama-model-data', JSON.stringify(ollamaModelData.value))
+}
+
+// 更新特定模型的参数列表
+const updateModelParams = (modelName: string, params: string[]) => {
+  ollamaModelData.value.modelParams = {
+    ...ollamaModelData.value.modelParams,
+    [modelName]: params
+  }
+  localStorage.setItem('ollama-model-data', JSON.stringify(ollamaModelData.value))
 }
 
 // 获取特定设置项
@@ -64,5 +105,5 @@ const getSetting = <K extends keyof Settings>(key: K): Settings[K] => {
 // 初始化时加载设置
 loadSettings()
 
-export { settings, loadSettings, saveSettings, getSetting }
-export type { Settings } 
+export { settings, ollamaModelData, loadSettings, saveSettings, saveOllamaModelData, updateModelParams, getSetting }
+export type { Settings, OllamaModelData } 

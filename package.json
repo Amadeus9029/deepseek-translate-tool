@@ -32,6 +32,7 @@
     "chardet": "^1.5.1",
     "electron-updater": "^5.3.0",
     "openai": "^4.20.1",
+    "pinia": "^3.0.3",
     "subsrt-ts": "^2.1.2",
     "vue-router": "^4.2.5",
     "vuetify": "^3.3.23",

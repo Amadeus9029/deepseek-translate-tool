@@ -44,16 +44,46 @@ export class TranslateService {
     }
 
     try {
+      console.log('发送翻译请求到DeepSeek API:', options.hostname + options.path)
       const responseData = await window.api.makeHttpsRequest(options, data)
-      const response = JSON.parse(responseData)
-      if (response.choices && response.choices[0] && response.choices[0].message) {
-        return response.choices[0].message.content.trim()
-      } else {
-        throw new Error('Invalid response format')
+      
+      try {
+        const response = JSON.parse(responseData)
+        
+        // 检查是否有错误信息
+        if (response.error) {
+          console.error('DeepSeek API返回错误:', response.error)
+          throw new Error(`API错误: ${response.error.message || JSON.stringify(response.error)}`)
+        }
+        
+        if (response.choices && response.choices[0] && response.choices[0].message) {
+          return response.choices[0].message.content.trim()
+        } else {
+          console.error('无效的API响应格式:', response)
+          throw new Error('无效的API响应格式，请检查API Key是否正确')
+        }
+      } catch (parseError) {
+        console.error('解析API响应失败:', parseError, '原始响应:', responseData)
+        throw new Error('解析API响应失败，请检查网络连接和API Key')
       }
     } catch (error) {
-      console.error('Translation request failed:', error)
-      throw error
+      console.error('翻译请求失败:', error)
+      
+      // 提供更具体的错误信息
+      if (error instanceof Error) {
+        // 检查常见错误
+        if (error.message.includes('401')) {
+          throw new Error('API Key无效或已过期，请检查您的API Key设置')
+        } else if (error.message.includes('403')) {
+          throw new Error('API访问被拒绝，请检查API Key权限')
+        } else if (error.message.includes('429')) {
+          throw new Error('API请求过于频繁或已超出配额限制')
+        } else if (error.message.includes('ENOTFOUND') || error.message.includes('ETIMEDOUT')) {
+          throw new Error('无法连接到DeepSeek API，请检查网络连接')
+        }
+        throw error
+      }
+      throw new Error('翻译请求失败，请检查网络连接和API Key')
     }
   }
 

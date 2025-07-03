@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { useTheme } from 'vuetify'
-import { settings, saveSettings as updateSettings } from '../services/SettingsService'
+import { settings, saveSettings as updateSettingsService, ollamaModelData as serviceOllamaModelData, saveOllamaModelData, updateModelParams } from '../services/SettingsService'
+import { useTranslateStore } from '../stores/translateStore'
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
+const store = useTranslateStore()
 
 const apiKey = ref(settings.value.apiKey)
 const showApiKey = ref(false)
@@ -25,11 +27,10 @@ const subtitleBatchSize = ref(String(settings.value.subtitleBatchSize || 20))
 const model = ref(settings.value.model)
 
 // Ollama 设置
-const useOllama = ref(settings.value.useOllama)
+const useOllama = ref(settings.value.useOllama) 
 const ollamaUrl = ref(settings.value.ollamaUrl)
 const ollamaModel = ref(settings.value.ollamaModel)
 const availableOllamaModels = ref<{title: string, value: string, description?: string}[]>([])
-const officialOllamaModels = ref<{title: string, value: string, description?: string}[]>([])
 const isTestingConnection = ref(false)
 const isLoadingOfficialModels = ref(false)
 const connectionTestResult = ref('')
@@ -44,45 +45,6 @@ const isLoadingModelParams = ref(false) // 是否正在加载模型参数
 const availableModels = [
   { title: 'DeepSeek Chat', value: 'deepseek-chat' },
   { title: 'DeepSeek Reasoner', value: 'deepseek-reasoner' }
-]
-
-// 预设的 Ollama DeepSeek 模型列表
-const presetOllamaModels = [
-  { title: 'DeepSeek R1 (最新版)', value: 'deepseek-r1:latest' },
-  { title: 'DeepSeek R1 1.5B', value: 'deepseek-r1:1.5b' },
-  { title: 'DeepSeek R1 7B', value: 'deepseek-r1:7b' },
-  { title: 'DeepSeek R1 8B', value: 'deepseek-r1:8b' },
-  { title: 'DeepSeek R1 14B', value: 'deepseek-r1:14b' },
-  { title: 'DeepSeek R1 32B', value: 'deepseek-r1:32b' },
-  { title: 'DeepSeek R1 70B', value: 'deepseek-r1:70b' },
-  { title: 'DeepSeek R1 671B', value: 'deepseek-r1:671b' },
-  { title: 'DeepSeek R1 1.5B (Qwen蒸馏 Q4)', value: 'deepseek-r1:1.5b-qwen-distill-q4_K_M' },
-  { title: 'DeepSeek R1 1.5B (Qwen蒸馏 Q8)', value: 'deepseek-r1:1.5b-qwen-distill-q8_0' },
-  { title: 'DeepSeek R1 1.5B (Qwen蒸馏 FP16)', value: 'deepseek-r1:1.5b-qwen-distill-fp16' },
-  { title: 'DeepSeek R1 7B (Qwen蒸馏 Q4)', value: 'deepseek-r1:7b-qwen-distill-q4_K_M' },
-  { title: 'DeepSeek R1 7B (Qwen蒸馏 Q8)', value: 'deepseek-r1:7b-qwen-distill-q8_0' },
-  { title: 'DeepSeek R1 7B (Qwen蒸馏 FP16)', value: 'deepseek-r1:7b-qwen-distill-fp16' },
-  { title: 'DeepSeek R1 8B (0528 Qwen3 Q4)', value: 'deepseek-r1:8b-0528-qwen3-q4_K_M' },
-  { title: 'DeepSeek R1 8B (0528 Qwen3 Q8)', value: 'deepseek-r1:8b-0528-qwen3-q8_0' },
-  { title: 'DeepSeek R1 8B (0528 Qwen3 FP16)', value: 'deepseek-r1:8b-0528-qwen3-fp16' },
-  { title: 'DeepSeek R1 8B (Llama蒸馏 Q4)', value: 'deepseek-r1:8b-llama-distill-q4_K_M' },
-  { title: 'DeepSeek R1 8B (Llama蒸馏 Q8)', value: 'deepseek-r1:8b-llama-distill-q8_0' },
-  { title: 'DeepSeek R1 8B (Llama蒸馏 FP16)', value: 'deepseek-r1:8b-llama-distill-fp16' },
-  { title: 'DeepSeek R1 14B (Qwen蒸馏 Q4)', value: 'deepseek-r1:14b-qwen-distill-q4_K_M' },
-  { title: 'DeepSeek R1 14B (Qwen蒸馏 Q8)', value: 'deepseek-r1:14b-qwen-distill-q8_0' },
-  { title: 'DeepSeek R1 14B (Qwen蒸馏 FP16)', value: 'deepseek-r1:14b-qwen-distill-fp16' },
-  { title: 'DeepSeek R1 32B (Qwen蒸馏 Q4)', value: 'deepseek-r1:32b-qwen-distill-q4_K_M' },
-  { title: 'DeepSeek R1 32B (Qwen蒸馏 Q8)', value: 'deepseek-r1:32b-qwen-distill-q8_0' },
-  { title: 'DeepSeek R1 32B (Qwen蒸馏 FP16)', value: 'deepseek-r1:32b-qwen-distill-fp16' },
-  { title: 'DeepSeek R1 70B (Llama蒸馏 Q4)', value: 'deepseek-r1:70b-llama-distill-q4_K_M' },
-  { title: 'DeepSeek R1 70B (Llama蒸馏 Q8)', value: 'deepseek-r1:70b-llama-distill-q8_0' },
-  { title: 'DeepSeek R1 70B (Llama蒸馏 FP16)', value: 'deepseek-r1:70b-llama-distill-fp16' },
-  { title: 'DeepSeek R1 671B (0528 Q4)', value: 'deepseek-r1:671b-0528-q4_K_M' },
-  { title: 'DeepSeek R1 671B (0528 Q8)', value: 'deepseek-r1:671b-0528-q8_0' },
-  { title: 'DeepSeek R1 671B (0528 FP16)', value: 'deepseek-r1:671b-0528-fp16' },
-  { title: 'DeepSeek R1 671B (Q4)', value: 'deepseek-r1:671b-q4_K_M' },
-  { title: 'DeepSeek R1 671B (Q8)', value: 'deepseek-r1:671b-q8_0' },
-  { title: 'DeepSeek R1 671B (FP16)', value: 'deepseek-r1:671b-fp16' }
 ]
 
 // Ollama 相关方法
@@ -184,25 +146,9 @@ const testOllamaConnection = async () => {
       connectionTestResult.value = '<span class="text-success">连接成功！</span>';
     }
     
-    // 如果连接成功，更新本地已安装的模型列表
-    if (result.data.models?.length > 0) {
-      const localModels = result.data.models.map((model: any) => ({
-        title: model.name,
-        value: model.name,
-        description: '本地已安装模型'
-      }));
-      
-      // 找出当前列表中不是本地模型的项目
-      const remoteModels = availableOllamaModels.value.filter(m => m.description !== '本地已安装模型');
-      
-      // 合并本地模型和远程模型，本地模型排在前面
-      availableOllamaModels.value = [
-        ...localModels,
-        ...remoteModels.filter(m => !localModels.some(local => local.value === m.value))
-      ];
-      
-      logger.info(`检测到 ${localModels.length} 个本地已安装模型`);
-    }
+    // 不再将本地已安装的模型添加到模型列表中
+    // 仅显示连接成功信息
+    logger.info(`Ollama连接测试成功，检测到 ${result.data.models?.length || 0} 个本地已安装模型`);
   } catch (error) {
     connectionTestResult.value = `连接失败：${error}`
   } finally {
@@ -210,7 +156,7 @@ const testOllamaConnection = async () => {
   }
 }
 
-// 从Ollama官方库获取模型列表
+// 简化 fetchOfficialModels 函数，确保正确返回结果
 const fetchOfficialModels = async () => {
   try {
     // 设置加载状态
@@ -223,7 +169,7 @@ const fetchOfficialModels = async () => {
     
     if (result.success && result.models && result.models.length > 0) {
       // 将获取到的模型转换为下拉框格式
-      officialOllamaModels.value = result.models.map((model: any) => {
+      const modelList = result.models.map((model: any) => {
         // 提取模型大小标签（如果有）
         const sizeTags = model.tags ? model.tags.filter((tag: string) => 
           /^\d+(\.\d+)?[bB]$/.test(tag) || tag.includes('vision') || tag.includes('tools') || tag.includes('thinking') || tag.includes('embedding')
@@ -239,44 +185,32 @@ const fetchOfficialModels = async () => {
         };
       });
       
-      // 合并官方模型和本地已安装的模型，避免重复
-      // 注意：这里只合并本地已安装的模型，不再加载预设模型
-      const existingValues = new Set(availableOllamaModels.value.map(m => m.value));
-      
-      // 先添加本地已安装的模型，再添加官方模型库中不重复的模型
-      const combinedModels = [
-        ...availableOllamaModels.value.filter(m => m.description === '本地已安装模型'),
-        ...officialOllamaModels.value.filter(m => !existingValues.has(m.value))
-      ];
-      
       // 更新可用模型列表
-      availableOllamaModels.value = combinedModels;
+      availableOllamaModels.value = modelList;
+      
+      // 更新Pinia存储中的模型数据
+      store.updateOllamaModelData({
+        availableModels: modelList
+      });
+
+      // 同时更新本地存储中的模型数据
+      saveOllamaModelData({
+        availableModels: modelList
+      });
       
       // 只在刷新按钮点击后显示成功提示
       if (showSnackbar.value) {
         snackbarColor.value = 'success';
-        snackbarText.value = `成功加载 ${officialOllamaModels.value.length} 个远程模型`;
+        snackbarText.value = `成功加载 ${modelList.length} 个远程模型`;
       }
       
       return true;
     } else {
-      logger.error('获取官方模型列表失败:', result.error);
-      
-      // 显示警告提示
-      snackbarColor.value = 'warning';
-      snackbarText.value = '远程模型加载失败，使用预设模型列表';
-      showSnackbar.value = true;
-      
-      // 使用备用方案
+      // 使用备用API获取模型列表
       return await fetchOfficialModelsFromAPI();
     }
   } catch (error) {
     logger.error('获取官方模型列表失败:', error);
-    
-    // 显示警告提示
-    snackbarColor.value = 'warning';
-    snackbarText.value = '远程模型加载失败，使用预设模型列表';
-    showSnackbar.value = true;
     
     // 使用备用方案
     return await fetchOfficialModelsFromAPI();
@@ -285,16 +219,11 @@ const fetchOfficialModels = async () => {
   }
 }
 
-// 添加一个从Ollama API获取官方模型列表的函数
+// 简化 fetchOfficialModelsFromAPI 函数
 const fetchOfficialModelsFromAPI = async () => {
   try {
     // 设置加载状态
     isLoadingOfficialModels.value = true;
-    
-    // 显示加载提示
-    snackbarColor.value = 'info';
-    snackbarText.value = '正在从Ollama API获取模型列表...';
-    showSnackbar.value = true;
     
     // 调用主进程获取Ollama API模型数据
     const result = await ipcRenderer.invoke('fetch-ollama-api-models');
@@ -302,71 +231,7 @@ const fetchOfficialModelsFromAPI = async () => {
     
     if (result.success && result.models && result.models.length > 0) {
       // 将获取到的模型转换为下拉框格式
-      officialOllamaModels.value = result.models.map((model: any) => {
-        // 提取模型大小标签（如果有）
-        const sizeTags = model.tags ? model.tags.filter((tag: string) => 
-          /^\d+(\.\d+)?[bB]$/.test(tag) || tag.includes('vision') || tag.includes('tools') || tag.includes('thinking') || tag.includes('embedding')
-        ) : [];
-        
-        // 构建模型标题，包含大小信息
-        const modelTitle = `${model.name}${sizeTags.length > 0 ? ` (${sizeTags.join(', ')})` : ''}`;
-        
-        return {
-          title: modelTitle,
-          value: model.name,
-          description: model.description || ''
-        };
-      });
-      
-      // 合并官方模型和本地已安装的模型，避免重复
-      // 注意：这里只合并本地已安装的模型，不再加载预设模型
-      const existingValues = new Set(availableOllamaModels.value.map(m => m.value));
-      
-      // 先添加本地已安装的模型，再添加官方模型库中不重复的模型
-      const combinedModels = [
-        ...availableOllamaModels.value.filter(m => m.description === '本地已安装模型'),
-        ...officialOllamaModels.value.filter(m => !existingValues.has(m.value))
-      ];
-      
-      // 更新可用模型列表
-      availableOllamaModels.value = combinedModels;
-      
-      // 显示成功提示
-      snackbarColor.value = 'success';
-      snackbarText.value = `成功加载 ${officialOllamaModels.value.length} 个常用模型`;
-      showSnackbar.value = true;
-      
-      return true;
-    } else {
-      logger.error('获取官方模型列表失败:', result.error);
-      
-      // 显示警告提示
-      snackbarColor.value = 'warning';
-      snackbarText.value = '远程模型加载失败，使用本地预设模型列表';
-      showSnackbar.value = true;
-      
-      // 使用备用模型列表（常见模型）
-      const backupModels = [
-        { name: 'llama3', description: 'Meta Llama 3: The most capable openly available LLM to date', tags: ['8b', '70b'] },
-        { name: 'llama3.1', description: 'Llama 3.1 is a new state-of-the-art model from Meta', tags: ['8b', '70b', '405b', 'tools'] },
-        { name: 'llama2', description: 'Llama 2 is a collection of foundation language models', tags: ['7b', '13b', '70b'] },
-        { name: 'mistral', description: 'The 7B model released by Mistral AI', tags: ['7b', 'tools'] },
-        { name: 'gemma', description: 'Gemma is a family of lightweight, state-of-the-art open models built by Google DeepMind', tags: ['2b', '7b'] },
-        { name: 'gemma2', description: 'Google Gemma 2 is a high-performing and efficient model', tags: ['2b', '9b', '27b'] },
-        { name: 'gemma3', description: 'The current, most capable model that runs on a single GPU', tags: ['1b', '4b', '12b', '27b', 'vision'] },
-        { name: 'qwen', description: 'Qwen 1.5 is a series of large language models by Alibaba Cloud', tags: ['0.5b', '1.8b', '4b', '7b', '14b', '32b', '72b', '110b'] },
-        { name: 'qwen2', description: 'Qwen2 is a new series of large language models from Alibaba group', tags: ['0.5b', '1.5b', '7b', '72b', 'tools'] },
-        { name: 'qwen2.5', description: 'Qwen2.5 models are pretrained on Alibaba\'s latest large-scale dataset', tags: ['0.5b', '1.5b', '3b', '7b', '14b', '32b', '72b', 'tools'] },
-        { name: 'qwen3', description: 'Qwen3 is the latest generation of large language models in Qwen series', tags: ['0.6b', '1.7b', '4b', '8b', '14b', '30b', '32b', '235b', 'tools', 'thinking'] },
-        { name: 'phi3', description: 'Phi-3 is a family of lightweight 3B (Mini) and 14B (Medium) state-of-the-art open models by Microsoft', tags: ['3.8b', '14b'] },
-        { name: 'phi4', description: 'Phi-4 is a 14B parameter, state-of-the-art open model from Microsoft', tags: ['14b'] },
-        { name: 'deepseek-r1', description: 'DeepSeek-R1 is a family of open reasoning models with performance approaching that of leading models', tags: ['1.5b', '7b', '8b', '14b', '32b', '70b', '671b', 'tools', 'thinking'] },
-        { name: 'codellama', description: 'A large language model that can use text prompts to generate and discuss code', tags: ['7b', '13b', '34b', '70b'] },
-        { name: 'llava', description: 'LLaVA is a novel end-to-end trained large multimodal model that combines a vision encoder and Vicuna', tags: ['7b', '13b', '34b', 'vision'] }
-      ];
-      
-      // 将备用模型转换为下拉框格式
-      officialOllamaModels.value = backupModels.map((model) => {
+      const modelList = result.models.map((model: any) => {
         // 构建模型标题，包含大小信息
         const modelTitle = `${model.name}${model.tags.length > 0 ? ` (${model.tags.join(', ')})` : ''}`;
         
@@ -377,128 +242,82 @@ const fetchOfficialModelsFromAPI = async () => {
         };
       });
       
-      // 合并官方模型和本地已安装的模型，避免重复
-      const existingValues = new Set(availableOllamaModels.value.map(m => m.value));
-      
-      // 先添加本地已安装的模型，再添加官方模型库中不重复的模型，最后添加预设模型
-      const combinedModels = [
-        ...availableOllamaModels.value.filter(m => m.description === '本地已安装模型'),
-        ...officialOllamaModels.value.filter(m => !existingValues.has(m.value)),
-        ...presetOllamaModels.filter(m => !existingValues.has(m.value) && !officialOllamaModels.value.some(o => o.value === m.value))
-      ];
-      
       // 更新可用模型列表
-      availableOllamaModels.value = combinedModels;
+      availableOllamaModels.value = modelList;
+      
+      // 更新Pinia存储中的模型数据
+      store.updateOllamaModelData({
+        availableModels: modelList
+      });
+
+      // 同时更新本地存储中的模型数据
+      saveOllamaModelData({
+        availableModels: modelList
+      });
       
       // 显示成功提示
-      snackbarColor.value = 'success';
-      snackbarText.value = `成功加载 ${officialOllamaModels.value.length} 个预设模型`;
-      showSnackbar.value = true;
+      if (showSnackbar.value) {
+        snackbarColor.value = 'success';
+        snackbarText.value = `成功加载 ${modelList.length} 个模型`;
+        showSnackbar.value = true;
+      }
       
       return true;
+    } else {
+      logger.error('获取官方模型列表失败:', result.error);
+      
+      // 显示失败提示
+      if (showSnackbar.value) {
+        snackbarColor.value = 'error';
+        snackbarText.value = '模型加载失败';
+        showSnackbar.value = true;
+      }
+      
+      return false;
     }
   } catch (error) {
     logger.error('获取备用模型列表失败:', error);
     
     // 显示失败提示
-    snackbarColor.value = 'error';
-    snackbarText.value = '模型加载失败，使用本地预设模型列表';
-    showSnackbar.value = true;
+    if (showSnackbar.value) {
+      snackbarColor.value = 'error';
+      snackbarText.value = '模型加载失败';
+      showSnackbar.value = true;
+    }
     
-    // 使用备用模型列表（常见模型）
-    const backupModels = [
-      { name: 'llama3', description: 'Meta Llama 3: The most capable openly available LLM to date', tags: ['8b', '70b'] },
-      { name: 'llama3.1', description: 'Llama 3.1 is a new state-of-the-art model from Meta', tags: ['8b', '70b', '405b', 'tools'] },
-      { name: 'llama2', description: 'Llama 2 is a collection of foundation language models', tags: ['7b', '13b', '70b'] },
-      { name: 'mistral', description: 'The 7B model released by Mistral AI', tags: ['7b', 'tools'] },
-      { name: 'gemma', description: 'Gemma is a family of lightweight, state-of-the-art open models built by Google DeepMind', tags: ['2b', '7b'] },
-      { name: 'gemma2', description: 'Google Gemma 2 is a high-performing and efficient model', tags: ['2b', '9b', '27b'] },
-      { name: 'gemma3', description: 'The current, most capable model that runs on a single GPU', tags: ['1b', '4b', '12b', '27b', 'vision'] },
-      { name: 'qwen', description: 'Qwen 1.5 is a series of large language models by Alibaba Cloud', tags: ['0.5b', '1.8b', '4b', '7b', '14b', '32b', '72b', '110b'] },
-      { name: 'qwen2', description: 'Qwen2 is a new series of large language models from Alibaba group', tags: ['0.5b', '1.5b', '7b', '72b', 'tools'] },
-      { name: 'qwen2.5', description: 'Qwen2.5 models are pretrained on Alibaba\'s latest large-scale dataset', tags: ['0.5b', '1.5b', '3b', '7b', '14b', '32b', '72b', 'tools'] },
-      { name: 'qwen3', description: 'Qwen3 is the latest generation of large language models in Qwen series', tags: ['0.6b', '1.7b', '4b', '8b', '14b', '30b', '32b', '235b', 'tools', 'thinking'] },
-      { name: 'phi3', description: 'Phi-3 is a family of lightweight 3B (Mini) and 14B (Medium) state-of-the-art open models by Microsoft', tags: ['3.8b', '14b'] },
-      { name: 'phi4', description: 'Phi-4 is a 14B parameter, state-of-the-art open model from Microsoft', tags: ['14b'] },
-      { name: 'deepseek-r1', description: 'DeepSeek-R1 is a family of open reasoning models with performance approaching that of leading models', tags: ['1.5b', '7b', '8b', '14b', '32b', '70b', '671b', 'tools', 'thinking'] },
-      { name: 'codellama', description: 'A large language model that can use text prompts to generate and discuss code', tags: ['7b', '13b', '34b', '70b'] },
-      { name: 'llava', description: 'LLaVA is a novel end-to-end trained large multimodal model that combines a vision encoder and Vicuna', tags: ['7b', '13b', '34b', 'vision'] }
-    ];
-    
-    // 将备用模型转换为下拉框格式
-    officialOllamaModels.value = backupModels.map((model) => {
-      // 构建模型标题，包含大小信息
-      const modelTitle = `${model.name}${model.tags.length > 0 ? ` (${model.tags.join(', ')})` : ''}`;
-      
-      return {
-        title: modelTitle,
-        value: model.name,
-        description: model.description || ''
-      };
-    });
-    
-    // 合并官方模型和本地已安装的模型，避免重复
-    const existingValues = new Set(availableOllamaModels.value.map(m => m.value));
-    
-    // 先添加本地已安装的模型，再添加官方模型库中不重复的模型，最后添加预设模型
-    const combinedModels = [
-      ...availableOllamaModels.value.filter(m => m.description === '本地已安装模型'),
-      ...officialOllamaModels.value.filter(m => !existingValues.has(m.value)),
-      ...presetOllamaModels.filter(m => !existingValues.has(m.value) && !officialOllamaModels.value.some(o => o.value === m.value))
-    ];
-    
-    // 更新可用模型列表
-    availableOllamaModels.value = combinedModels;
-    
-    // 显示成功提示
-    snackbarColor.value = 'success';
-    snackbarText.value = `成功加载 ${officialOllamaModels.value.length} 个预设模型`;
-    showSnackbar.value = true;
-    
-    return true;
+    return false;
   } finally {
     isLoadingOfficialModels.value = false;
   }
 }
 
+// 简化 loadOllamaModels 函数，修复模型列表加载问题
 const loadOllamaModels = async () => {
   try {
-    const result = await ipcRenderer.invoke('ollama-fetch', {
-      baseUrl: ollamaUrl.value,
-      path: '/api/tags',
-      method: 'GET'
-    });
-    if (result.success && result.data.models?.length > 0) {
-      // 从远程获取模型列表并转换为下拉框格式
-      const remoteModels = result.data.models.map((model: any) => ({
-        title: model.name,
-        value: model.name,
-        description: '本地已安装模型'
-      }));
+    // 先检查本地存储中是否有模型数据
+    const cachedData = store.ollamaModelData;
+    
+    // 如果有缓存的模型数据且不为空，直接使用
+    if (cachedData.availableModels && cachedData.availableModels.length > 0) {
+      logger.info('使用本地缓存的模型列表数据');
+      availableOllamaModels.value = cachedData.availableModels;
       
-      // 更新可用模型列表为本地已安装的模型
-      availableOllamaModels.value = remoteModels;
-      
-      // 尝试获取官方模型库列表
-      await fetchOfficialModels();
-    } else {
-      // 如果远程获取失败，记录错误信息但不显示警告
-      logger.error('获取本地Ollama模型列表失败:', result.error);
-      
-      // 使用预设模型列表
-      availableOllamaModels.value = presetOllamaModels;
-      
-      // 尝试获取官方模型库列表
-      await fetchOfficialModels();
+      // 检查用户之前选择的模型
+      await checkAndSetUserModel();
+      return;
     }
+    
+    // 如果没有缓存数据，则获取远程模型列表
+    logger.info('本地无缓存数据，获取远程模型列表');
+    await fetchOfficialModels();
+    
+    // 检查用户之前选择的模型
+    await checkAndSetUserModel();
   } catch (error) {
     logger.error('获取 Ollama 模型列表失败:', error);
     
-    // 使用预设模型列表
-    availableOllamaModels.value = presetOllamaModels;
-    
-    // 尝试获取官方模型库列表
-    await fetchOfficialModels();
+    // 检查用户之前选择的模型
+    await checkAndSetUserModel();
   }
 }
 
@@ -512,9 +331,56 @@ watch(ollamaUrl, async (newUrl) => {
 // 监听 useOllama 变化
 watch(useOllama, async (newValue) => {
   if (newValue) {
-    await loadOllamaModels()
+    // 加载模型列表
+    await loadOllamaModels();
+  } else {
+    // 切换到API Key模式，清空模型选择界面，但保留ollamaModel的值
+    selectedModelBase.value = null;
+    selectedModelParam.value = '';
+    availableModelParams.value = [];
   }
+});
+
+// 监听主题变化
+watch(themeMode, (newMode) => {
+  updateTheme(newMode)
+  localStorage.setItem('theme-mode', newMode)
 })
+
+// 选择存储路径
+const selectSavePath = async () => {
+  try {
+    const result = await ipcRenderer?.invoke('select-directory')
+    if (result?.success && result.dirPath) {
+      savePath.value = result.dirPath
+    }
+  } catch (error) {
+    logger.error('选择存储路径失败:', error)
+  }
+}
+
+// 在组件挂载时加载设置
+onMounted(async () => {
+  await loadSettings();
+  
+  const savedTheme = localStorage.getItem('theme-mode');
+  if (savedTheme) {
+    themeMode.value = savedTheme;
+    updateTheme(savedTheme);
+  }
+
+  // 监听系统主题变化
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (themeMode.value === 'system') {
+      theme.global.name.value = e.matches ? 'dark' : 'light';
+    }
+  });
+  
+  // 如果使用Ollama，加载模型列表
+  if (useOllama.value) {
+    await loadOllamaModels();
+  }
+});
 
 // 保存设置
 const showSnackbar = ref(false)
@@ -522,8 +388,13 @@ const snackbarText = ref('')
 const snackbarColor = ref('success')
 
 const saveSettings = async () => {
-  // 保存设置到本地存储
-  updateSettings({
+  // 如果当前使用Ollama并且有选择模型，更新ollamaModel值
+  if (useOllama.value && selectedModelBase.value) {
+    updateFullModelName();
+  }
+  
+  // 创建设置对象
+  const newSettings = {
     apiKey: apiKey.value,
     savePath: savePath.value,
     concurrentThreads: Number(concurrentThreads.value),
@@ -535,8 +406,15 @@ const saveSettings = async () => {
     subtitleBatchSize: Number(subtitleBatchSize.value),
     useOllama: useOllama.value,
     ollamaUrl: ollamaUrl.value,
-    ollamaModel: ollamaModel.value
-  })
+    ollamaModel: ollamaModel.value,
+    themeMode: themeMode.value as 'system' | 'light' | 'dark'
+  }
+  
+  // 保存设置到本地存储
+  updateSettingsService(newSettings)
+  
+  // 更新Pinia状态
+  store.updateSettings(newSettings)
 
   // 保存设置到主进程
   try {
@@ -575,7 +453,9 @@ const loadSettings = async () => {
     const result = await ipcRenderer?.invoke('read-settings')
     if (result?.success && result.settings) {
       // 更新本地设置
-      updateSettings(result.settings)
+      updateSettingsService(result.settings)
+      // 更新Pinia状态
+      store.updateSettings(result.settings)
       // 更新响应式变量
       apiKey.value = result.settings.apiKey || ''
       savePath.value = result.settings.savePath || ''
@@ -589,6 +469,7 @@ const loadSettings = async () => {
       useOllama.value = result.settings.useOllama || false
       ollamaUrl.value = result.settings.ollamaUrl || 'http://localhost:11434'
       ollamaModel.value = result.settings.ollamaModel || 'deepseek-r1:7b'
+      themeMode.value = result.settings.themeMode || 'system'
     }
   } catch (error) {
     logger.error('加载设置失败:', error)
@@ -605,90 +486,8 @@ const updateTheme = (mode: string) => {
   }
 }
 
-// 监听主题变化
-watch(themeMode, (newMode) => {
-  updateTheme(newMode)
-  localStorage.setItem('theme-mode', newMode)
-})
-
-// 选择存储路径
-const selectSavePath = async () => {
-  try {
-    const result = await ipcRenderer?.invoke('select-directory')
-    if (result?.success && result.dirPath) {
-      savePath.value = result.dirPath
-    }
-  } catch (error) {
-    logger.error('选择存储路径失败:', error)
-  }
-}
-
-// 在组件挂载时加载设置
-onMounted(async () => {
-  await loadSettings()
-  
-  const savedTheme = localStorage.getItem('theme-mode')
-  if (savedTheme) {
-    themeMode.value = savedTheme
-    updateTheme(savedTheme)
-  }
-
-  // 监听系统主题变化
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-    if (themeMode.value === 'system') {
-      theme.global.name.value = e.matches ? 'dark' : 'light'
-    }
-  })
-  
-  // 如果使用Ollama，尝试加载模型列表
-  if (useOllama.value && ollamaUrl.value) {
-    try {
-      // 先不显示任何提示，尝试静默获取远程数据
-      const result = await ipcRenderer.invoke('fetch-official-models');
-      
-      if (result.success && result.models && result.models.length > 0) {
-        // 将获取到的模型转换为下拉框格式
-        officialOllamaModels.value = result.models.map((model: any) => {
-          // 提取模型大小标签（如果有）
-          const sizeTags = model.tags ? model.tags.filter((tag: string) => 
-            /^\d+(\.\d+)?[bB]$/.test(tag) || tag.includes('vision') || tag.includes('tools') || tag.includes('thinking') || tag.includes('embedding')
-          ) : [];
-          
-          // 构建模型标题，包含大小信息
-          const modelTitle = `${model.name}${sizeTags.length > 0 ? ` (${sizeTags.join(', ')})` : ''}`;
-          
-          return {
-            title: modelTitle,
-            value: model.name,
-            description: model.description || ''
-          };
-        });
-        
-        // 更新可用模型列表
-        availableOllamaModels.value = officialOllamaModels.value;
-        
-        logger.info(`成功加载 ${officialOllamaModels.value.length} 个远程模型`);
-      } else {
-        // 如果远程获取失败，使用预设模型列表，但不显示警告
-        logger.info('远程模型加载失败，使用预设模型列表');
-        availableOllamaModels.value = presetOllamaModels;
-      }
-    } catch (error) {
-      // 如果出错，使用预设模型列表，但不显示警告
-      logger.info('远程模型加载出错，使用预设模型列表:', error);
-      availableOllamaModels.value = presetOllamaModels;
-    }
-    
-    // 解析当前选择的模型名称和参数
-    parseCurrentModelName();
-  } else {
-    // 如果未使用Ollama，使用预设模型列表
-    availableOllamaModels.value = presetOllamaModels;
-  }
-})
-
-// 解析当前选择的模型名称和参数
-const parseCurrentModelName = () => {
+// 确保ensureUserModelDisplayed函数被调用
+const checkAndSetUserModel = async () => {
   if (ollamaModel.value) {
     // 解析模型名称，格式可能是 "modelName:param"
     const parts = ollamaModel.value.split(':');
@@ -697,47 +496,43 @@ const parseCurrentModelName = () => {
     const baseModelName = parts[0];
     
     // 查找匹配的模型对象（只匹配基础模型名称）
-    let modelObj = availableOllamaModels.value.find(m => {
+    const modelExists = availableOllamaModels.value.some(m => {
       const modelBaseName = m.value.split(':')[0];
       return modelBaseName === baseModelName;
     });
     
-    if (!modelObj) {
-      // 如果在当前列表中找不到，创建一个新的模型对象
-      modelObj = {
-        title: baseModelName,
-        value: baseModelName,
-        description: '用户选择的模型'
-      };
+    if (modelExists) {
+      // 如果模型存在于当前列表中，设置为选中状态
+      const modelObj = availableOllamaModels.value.find(m => {
+        const modelBaseName = m.value.split(':')[0];
+        return modelBaseName === baseModelName;
+      });
       
-      // 将用户选择的模型添加到列表中
-      availableOllamaModels.value.unshift(modelObj);
-    }
-    
-    // 设置选中的基础模型
-    selectedModelBase.value = modelObj;
-    
-    // 如果有参数部分
-    if (parts.length > 1) {
-      const modelParam = parts[1];
-      selectedModelParam.value = modelParam;
-      logger.info(`解析模型名称: 基础模型=${selectedModelBase.value.title}, 参数=${selectedModelParam.value}`);
-    } else {
-      logger.info(`解析模型名称: 基础模型=${selectedModelBase.value.title}, 无参数`);
-    }
-    
-    // 加载该模型的参数列表
-    loadModelParams(baseModelName);
-  } else {
-    // 默认选择第一个模型
-    if (availableOllamaModels.value.length > 0) {
+      if (modelObj) {
+        selectedModelBase.value = modelObj;
+        
+        // 如果有参数部分
+        if (parts.length > 1) {
+          const modelParam = parts[1];
+          // 加载参数列表
+          await loadModelParams(baseModelName);
+        } else {
+          // 加载参数列表
+          await loadModelParams(baseModelName);
+        }
+      }
+    } else if (availableOllamaModels.value.length > 0) {
+      // 如果模型不存在于当前列表中，选择第一个可用的模型
       selectedModelBase.value = availableOllamaModels.value[0];
-      logger.info(`默认选择第一个模型: ${selectedModelBase.value.title}`);
-      
-      // 加载该模型的参数列表
-      const baseModelName = selectedModelBase.value.value.split(':')[0];
-      loadModelParams(baseModelName);
+      await loadModelParams(selectedModelBase.value.value);
+    } else {
+      // 如果模型列表为空，确保显示用户之前选择的模型
+      ensureUserModelDisplayed();
     }
+  } else if (availableOllamaModels.value.length > 0) {
+    // 如果没有之前选择的模型，选择第一个可用的模型
+    selectedModelBase.value = availableOllamaModels.value[0];
+    await loadModelParams(selectedModelBase.value.value);
   }
 };
 
@@ -771,8 +566,8 @@ const logger = {
   }
 }
 
-// 加载特定模型的参数列表
-const loadModelParams = async (modelName: string) => {
+// 简化 loadModelParams 函数，增加缓存逻辑
+const loadModelParams = async (modelName: string): Promise<void> => {
   if (!modelName) return;
   
   try {
@@ -782,31 +577,63 @@ const loadModelParams = async (modelName: string) => {
     // 设置加载状态
     isLoadingModelParams.value = true;
     
-    // 保存当前选择的参数，以便加载完成后恢复
-    const currentParam = selectedModelParam.value;
+    // 检查是否有保存在ollamaModel中的参数
+    let savedParam = '';
+    if (ollamaModel.value && ollamaModel.value.includes(':')) {
+      const parts = ollamaModel.value.split(':');
+      if (parts[0] === baseModelName && parts.length > 1) {
+        savedParam = parts[1];
+        logger.info(`检测到用户之前保存的参数: ${savedParam}`);
+      }
+    }
     
-    // 清空参数列表
-    availableModelParams.value = [];
+    // 检查是否有缓存的参数数据
+    const cachedParams = store.ollamaModelData.modelParams[baseModelName];
+    if (cachedParams && cachedParams.length > 0) {
+      logger.info(`使用缓存的参数列表: ${baseModelName}`, cachedParams);
+      availableModelParams.value = cachedParams;
+      
+      // 如果有保存的参数但不在列表中，添加到列表
+      if (savedParam && !availableModelParams.value.includes(savedParam)) {
+        availableModelParams.value.push(savedParam);
+        store.updateModelParams(baseModelName, availableModelParams.value);
+      }
+      
+      // 设置选中的参数
+      if (savedParam) {
+        selectedModelParam.value = savedParam;
+      } else if (availableModelParams.value.length > 0) {
+        selectedModelParam.value = availableModelParams.value[0];
+      }
+      
+      // 更新完整的模型名称
+      updateFullModelName();
+      isLoadingModelParams.value = false;
+      return;
+    }
     
-    logger.info(`开始加载模型 ${baseModelName} 的参数列表...`);
-    
-    // 调用主进程获取模型参数
+    // 如果没有缓存数据，调用主进程获取模型参数
+    logger.info(`无缓存参数数据，获取模型 ${baseModelName} 的参数列表...`);
     const result = await ipcRenderer.invoke('fetch-model-params', baseModelName);
     
     if (result.success && result.params && result.params.length > 0) {
       // 更新可用参数列表
       availableModelParams.value = result.params;
-      logger.info(`成功加载 ${result.params.length} 个参数: ${result.params.join(', ')}`);
       
-      // 如果当前选择的参数在列表中，保持选择
-      if (currentParam && availableModelParams.value.includes(currentParam)) {
-        selectedModelParam.value = currentParam;
-      } 
-      // 否则，如果有参数，默认选择第一个
-      else if (availableModelParams.value.length > 0) {
+      // 更新Pinia存储中的参数列表
+      store.updateModelParams(baseModelName, result.params);
+      
+      // 如果有保存的参数但不在列表中，添加到列表
+      if (savedParam && !availableModelParams.value.includes(savedParam)) {
+        availableModelParams.value.push(savedParam);
+        store.updateModelParams(baseModelName, availableModelParams.value);
+      }
+      
+      // 设置选中的参数
+      if (savedParam) {
+        selectedModelParam.value = savedParam;
+      } else if (availableModelParams.value.length > 0) {
         selectedModelParam.value = availableModelParams.value[0];
-      } else {
-        selectedModelParam.value = '';
       }
       
       // 更新完整的模型名称
@@ -814,14 +641,11 @@ const loadModelParams = async (modelName: string) => {
     } else {
       logger.error('获取模型参数失败:', result.error);
       
-      // 如果是用户之前保存的模型，保留当前参数
-      if (currentParam) {
-        selectedModelParam.value = currentParam;
-        
-        // 手动添加当前参数到列表中
-        availableModelParams.value = [currentParam];
-        
-        // 更新完整的模型名称
+      // 如果有保存的参数，使用它
+      if (savedParam) {
+        selectedModelParam.value = savedParam;
+        availableModelParams.value = [savedParam];
+        store.updateModelParams(baseModelName, availableModelParams.value);
         updateFullModelName();
       } else {
         snackbarColor.value = 'warning';
@@ -832,18 +656,21 @@ const loadModelParams = async (modelName: string) => {
   } catch (error) {
     logger.error('加载模型参数失败:', error);
     
-    // 如果是用户之前保存的模型，保留当前参数
-    const currentParam = selectedModelParam.value;
-    if (currentParam) {
-      // 手动添加当前参数到列表中
-      availableModelParams.value = [currentParam];
-      
-      // 更新完整的模型名称
-      updateFullModelName();
-    } else {
-      snackbarColor.value = 'error';
-      snackbarText.value = '加载模型参数失败';
-      showSnackbar.value = true;
+    // 检查是否有保存在ollamaModel中的参数
+    if (ollamaModel.value && ollamaModel.value.includes(':')) {
+      const parts = ollamaModel.value.split(':');
+      const baseModelName = selectedModelBase.value?.value.split(':')[0] || '';
+      if (parts[0] === baseModelName && parts.length > 1) {
+        const savedParam = parts[1];
+        selectedModelParam.value = savedParam;
+        availableModelParams.value = [savedParam];
+        
+        if (baseModelName) {
+          store.updateModelParams(baseModelName, availableModelParams.value);
+        }
+        
+        updateFullModelName();
+      }
     }
   } finally {
     isLoadingModelParams.value = false;
@@ -865,6 +692,10 @@ const updateFullModelName = () => {
     }
     
     logger.info('更新完整模型名称:', ollamaModel.value);
+  } else {
+    // 如果模型被清空，也清空完整模型名称
+    ollamaModel.value = '';
+    logger.info('模型被清空，清空完整模型名称');
   }
 };
 
@@ -872,6 +703,11 @@ const updateFullModelName = () => {
 watch(selectedModelBase, async (newValue) => {
   if (newValue) {
     await loadModelParams(newValue.value);
+  } else {
+    // 如果模型被清空，也清空参数选择
+    selectedModelParam.value = '';
+    availableModelParams.value = [];
+    logger.info('模型被清空，清空参数选择');
   }
 });
 
@@ -893,12 +729,65 @@ const refreshModelList = async () => {
   showSnackbar.value = true;
   
   try {
+    // 强制重新获取模型列表，忽略缓存
     await fetchOfficialModels();
+    
+    // 更新Pinia存储中的模型数据
+    store.updateOllamaModelData({
+      availableModels: availableOllamaModels.value
+    });
+
+    // 同时更新本地存储中的模型数据
+    saveOllamaModelData({
+      availableModels: availableOllamaModels.value
+    });
   } catch (error) {
     logger.error('刷新模型列表失败:', error);
     snackbarColor.value = 'error';
     snackbarText.value = '刷新模型列表失败';
     showSnackbar.value = true;
+  }
+}
+
+// 确保显示用户之前选择的模型，即使在远程模型列表中找不到
+const ensureUserModelDisplayed = () => {
+  // 如果已经有选择的模型，不需要处理
+  if (selectedModelBase.value) {
+    return;
+  }
+  
+  // 如果有保存的模型值但没有对应的选择项
+  if (ollamaModel.value && useOllama.value) {
+    // 解析模型名称
+    const parts = ollamaModel.value.split(':');
+    const baseModelName = parts[0];
+    
+    // 创建一个临时模型对象
+    const tempModel = {
+      title: baseModelName,
+      value: baseModelName,
+      description: '用户保存的模型'
+    };
+    
+    // 添加到模型列表的最前面
+    if (!availableOllamaModels.value.some(m => m.value.split(':')[0] === baseModelName)) {
+      availableOllamaModels.value.unshift(tempModel);
+      logger.info(`添加用户保存的模型 ${baseModelName} 到列表`);
+    }
+    
+    // 设置为选中状态
+    selectedModelBase.value = tempModel;
+    
+    // 如果有参数部分
+    if (parts.length > 1) {
+      const modelParam = parts[1];
+      selectedModelParam.value = modelParam;
+      // 添加到参数列表
+      if (!availableModelParams.value.includes(modelParam)) {
+        availableModelParams.value.push(modelParam);
+      }
+      logger.info(`设置用户保存的模型参数: ${modelParam}`);
+    }
   }
 }
 </script>
@@ -984,7 +873,7 @@ const refreshModelList = async () => {
           </v-col>
           <v-col cols="12">
             <!-- 两级选择：模型名称和参数大小 -->
-            <div class="d-flex gap-2">
+            <div class="d-flex">
               <v-autocomplete
                 v-model="selectedModelBase"
                 :items="availableOllamaModels"
@@ -994,7 +883,6 @@ const refreshModelList = async () => {
                 :loading="isTestingConnection || isLoadingOfficialModels"
                 item-title="title"
                 item-value="value"
-                class="flex-grow-1"
                 return-object
                 clearable
                 :filter="customFilter"
@@ -1009,9 +897,9 @@ const refreshModelList = async () => {
                 persistent-hint
                 :loading="isLoadingModelParams"
                 :disabled="availableModelParams.length === 0"
-                class="flex-grow-1"
                 density="comfortable"
                 :menu-props="{ maxHeight: 300 }"
+                clearable
               ></v-autocomplete>
             </div>
             <div class="text-caption text-grey mt-1">

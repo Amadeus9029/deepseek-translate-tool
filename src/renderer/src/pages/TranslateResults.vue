@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useTheme } from 'vuetify'
+import { useTranslateStore } from '../stores/translateStore'
 
 interface TranslateResult {
   id: string
@@ -66,6 +67,9 @@ const newFileName = ref('')
 const types = ['文本', '文档', '字幕']
 const statuses = ['成功', '失败']
 
+// 使用翻译状态存储
+const translateStore = useTranslateStore()
+
 // 过滤和排序后的结果
 const filteredResults = computed(() => {
   return results.value
@@ -91,7 +95,6 @@ const filteredResults = computed(() => {
       return modifier * a[sortBy.value].localeCompare(b[sortBy.value])
     })
 })
-
 // 清除所有翻译结果
 // const clearResults = async () => {
 //   try {
@@ -335,6 +338,34 @@ const renameFile = async () => {
   showSnackbar.value = true
   renameDialog.value = false
 }
+
+// 添加查看字幕翻译结果的方法
+const viewSubtitleResult = (result: TranslateResult) => {
+  if (result.type === '字幕') {
+    // 将字幕结果加载到store中
+    translateStore.setSubtitleFile(result.fileName || '')
+    translateStore.setSourceSubtitles(result.sourceContent)
+    translateStore.setTranslatedSubtitles(result.translatedContent)
+    translateStore.setOutputPath(result.filePath || '')
+    
+    // 计算字幕数量
+    const sourceLines = result.sourceContent.split('\n').filter(line => line.trim()).length
+    const translatedLines = result.translatedContent.split('\n').filter(line => line.trim()).length
+    
+    // 更新翻译进度
+    translateStore.updateTranslationProgress(translatedLines, sourceLines)
+    
+    // 跳转到字幕翻译页面
+    navigateToPage('字幕翻译')
+  } else {
+    showDetails(result)
+  }
+}
+
+// 添加导航方法
+const navigateToPage = (page: string) => {
+  ipcRenderer?.send('navigate-to-page', page)
+}
 </script>
 
 <template>
@@ -429,7 +460,7 @@ const renameFile = async () => {
               <td>{{ result.sourceLanguage }}</td>
               <td>{{ result.targetLanguage }}</td>
               <td class="text-content">
-                <div class="text-preview" v-tooltip.top="result.type === '文本' ? result.sourceContent : result.fileName">
+                <div class="text-preview" v-tooltip.top="result.type === '文本' ? result.sourceContent : getFileName(result.fileName)">
                   {{ result.type === '文本' ? formatLongText(result.sourceContent) : getFileName(result.fileName) }}
                 </div>
                 <div v-if="result.fileName" class="file-actions">
@@ -512,7 +543,7 @@ const renameFile = async () => {
                   icon="mdi-eye"
                   variant="text"
                   size="small"
-                  @click="showDetails(result)"
+                  @click="viewSubtitleResult(result)"
                   color="primary"
                 ></v-btn>
               </td>

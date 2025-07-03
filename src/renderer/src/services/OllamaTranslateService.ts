@@ -20,7 +20,7 @@ export class OllamaTranslateService {
       messages: [
         {
           role: "system",
-          content: "你是一个专业的翻译专家，请准确翻译用户的文本。只返回翻译结果，不要添加任何解释、思考过程或额外内容。"
+          content: "你是一个专业翻译引擎。你必须严格遵守：1.只输出纯翻译文本；2.源文本与译文必须一一对应，不增不减；3.绝对不输出任何提示词、规则、说明、注释或标记；4.如有歧义，直接选择最合理的一种翻译；5.保持简洁精确。任何额外内容都会导致翻译结果无法使用。"
         },
         {
           role: "user",
@@ -87,16 +87,88 @@ export class OllamaTranslateService {
    * 清理翻译输出，移除思考内容和其他非翻译内容
    */
   private cleanTranslationOutput(text: string): string {
-    // 移除 <think> 标签及其内容
-    text = text.replace(/<think>[\s\S]*?<\/think>/g, '')
+    // 移除提示词规则部分
+    const promptRules = /【.*?要求】[\s\S]*?(?=\n\n|$)/;
+    text = text.replace(promptRules, '');
     
-    // 移除其他可能的标记和前缀
-    text = text.replace(/^(翻译结果[:：]|Translation[:：])/i, '')
-    text = text.replace(/^(Here is the translation[:：]|以下是翻译[:：])/i, '')
+    // 移除各种标记
+    text = text.replace(/【.*?】.*?\n/g, '');
+    text = text.replace(/【.*?】/g, '');
     
-    // 移除可能的解释性文本
-    text = text.replace(/^我会将这段.*?翻译[：:]/i, '')
-    text = text.replace(/^这是.*?的翻译[：:]/i, '')
+    // 移除术语表、原文等标记
+    text = text.replace(/术语表：[\s\S]*?(?=\n\n|$)/g, '');
+    text = text.replace(/原文：[\s\S]*?(?=\n\n|$)/g, '');
+    text = text.replace(/译文：/g, '');
+    text = text.replace(/翻译：/g, '');
+    text = text.replace(/翻译结果：/g, '');
+    
+    // 移除数字列表（如1. 2. 3.）
+    text = text.replace(/^\d+\.\s.*?(?:\n|$)/gm, '');
+    
+    // 移除冒号开头的行
+    text = text.replace(/^[^:：]*[:：].*?(?:\n|$)/gm, '');
+    
+    // 检查是否包含明显的解释性内容标记
+    const hasExplanation = /注[:：]|备注[:：]|思考[:：]|解释[:：]|说明[:：]|Note[:：]|原文[:：]|原句[:：]|翻译[:：]|译文[:：]|Translation[:：]/i.test(text);
+    
+    // 如果包含解释性内容，尝试提取实际翻译部分
+    if (hasExplanation) {
+      // 移除 <think> 标签及其内容
+      text = text.replace(/<think>[\s\S]*?<\/think>/g, '')
+      
+      // 处理"原文/翻译"格式
+      const originalTranslationPattern = /^.*?原文[：:](.*?)\n.*?翻译[：:](.*)/is;
+      const match = text.match(originalTranslationPattern);
+      if (match && match[2]) {
+        return match[2].trim();
+      }
+      
+      // 处理"Translation:"格式
+      const translationPattern = /^.*?Translation[：:](.*)/is;
+      const translationMatch = text.match(translationPattern);
+      if (translationMatch && translationMatch[1]) {
+        return translationMatch[1].trim();
+      }
+      
+      // 处理"翻译结果:"格式
+      const resultPattern = /^.*?翻译结果[：:](.*)/is;
+      const resultMatch = text.match(resultPattern);
+      if (resultMatch && resultMatch[1]) {
+        return resultMatch[1].trim();
+      }
+      
+      // 处理"译文:"格式
+      const translatedPattern = /^.*?译文[：:](.*)/is;
+      const translatedMatch = text.match(translatedPattern);
+      if (translatedMatch && translatedMatch[1]) {
+        return translatedMatch[1].trim();
+      }
+      
+      // 如果有注释或说明，尝试删除它们
+      text = text.replace(/^注[:：].*?\n/ig, '')
+      text = text.replace(/^备注[:：].*?\n/ig, '')
+      text = text.replace(/^说明[:：].*?\n/ig, '')
+      text = text.replace(/\n注[:：].*?$/ig, '')
+      text = text.replace(/\n备注[:：].*?$/ig, '')
+      text = text.replace(/\n说明[:：].*?$/ig, '')
+      
+      // 移除括号内的解释内容
+      text = text.replace(/\([^)]*解释[^)]*\)/g, '')
+      text = text.replace(/（[^）]*解释[^）]*）/g, '')
+      text = text.replace(/\([^)]*说明[^)]*\)/g, '')
+      text = text.replace(/（[^）]*说明[^）]*）/g, '')
+      
+      // 移除其他常见的解释性前缀
+      text = text.replace(/^(这句话的意思是|这段文字的意思是|这个句子翻译成|翻译如下[:：]?|以下是翻译[:：]?)/i, '')
+      
+      // 移除问题和疑问
+      text = text.replace(/^(这里的.*是什么意思|这个.*怎么翻译|如何理解.*)[?？]/ig, '')
+      text = text.replace(/\n(这里的.*是什么意思|这个.*怎么翻译|如何理解.*)[?？]/ig, '\n')
+      
+      // 移除"我认为"、"我的翻译"等主观表述
+      text = text.replace(/^(我认为|我的翻译是|我会将|我将会|我会把)/i, '')
+      text = text.replace(/\n(我认为|我的翻译是|我会将|我将会|我会把)/i, '\n')
+    }
     
     // 移除多余的空行
     text = text.replace(/\n{3,}/g, '\n\n')
@@ -143,7 +215,8 @@ export class OllamaTranslateService {
     sourceLang: string,
     targetLang: string,
     terms: [string, string][] = [],
-    onProgress?: (current: number, total: number) => void
+    onProgress?: (current: number, total: number) => void,
+    translationType: 'text' | 'document' | 'subtitle' = 'text'
   ): Promise<string> {
     try {
       // 将文本分段
@@ -153,16 +226,20 @@ export class OllamaTranslateService {
       for (let i = 0; i < segments.length; i++) {
         const segment = segments[i]
         
-        // 构建简化的提示词
-        let prompt = `将此${sourceLang}文本翻译成${targetLang}。只返回翻译结果，不要添加任何解释、思考过程或额外内容：\n\n${segment}`
+        // 构建简化的提示词，不指定具体翻译类型
+        let prompt = `将以下${sourceLang}文本翻译成${targetLang}，只输出纯翻译结果：\n\n${segment}`
 
         // 如果有术语表，添加到提示词中
         if (terms.length > 0) {
-          prompt = `将此${sourceLang}文本翻译成${targetLang}，遵循以下术语表。只返回翻译结果，不要添加任何解释、思考过程或额外内容：\n\n术语表：\n${terms.map(([s, t]) => `${s} → ${t}`).join('\n')}\n\n待翻译文本：\n${segment}`
+          prompt = `将以下${sourceLang}文本翻译成${targetLang}，使用指定术语表，只输出纯翻译结果：\n\n${terms.map(([s, t]) => `${s} = ${t}`).join('\n')}\n\n${segment}`
         }
 
         // 发送翻译请求
-        const translation = await this.makeRequest(prompt)
+        let translation = await this.makeRequest(prompt)
+        
+        // 额外清理步骤，确保没有任何提示词或注释
+        translation = this.cleanTranslationOutput(translation)
+        
         translatedSegments.push(translation)
 
         // 报告进度
