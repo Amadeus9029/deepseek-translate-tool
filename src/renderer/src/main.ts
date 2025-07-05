@@ -10,6 +10,8 @@ import * as directives from 'vuetify/directives'
 // Material Design Icons
 import { aliases, mdi } from 'vuetify/iconsets/mdi'
 import '@mdi/font/css/materialdesignicons.css'
+// i18n
+import { i18n, initI18n } from './i18n'
 // Components
 import App from './App.vue'
 import { initTranslateService } from './services/TranslateService'
@@ -79,10 +81,14 @@ const vuetify = createVuetify({
 // 创建Pinia实例
 const pinia = createPinia()
 
+// 初始化i18n
+await initI18n()
+
 // 创建Vue应用
 const app = createApp(App)
 app.use(vuetify)
 app.use(pinia)
+app.use(i18n)
 app.mount('#app')
 
 const updateTheme = (mode: string) => {
