@@ -61,18 +61,18 @@ const props = defineProps({
   height: calc(100vh - 40px - 32px);
   width: 100%;
   margin: 0;
-  padding: 16px;
+  padding: 8px;
   box-sizing: border-box;
 }
 
 .main-header {
-  height: 32px;
+  height: 40px;
   background: rgb(var(--v-theme-surface));
   display: flex;
   align-items: center;
   padding: 0 24px;
   margin-left: 210px;
-  padding-bottom: 16px;
+  padding-bottom: 24px;
 }
 
 .main-title {

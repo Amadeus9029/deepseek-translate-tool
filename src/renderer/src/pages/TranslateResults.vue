@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useTheme } from 'vuetify'
 import { useTranslateStore } from '../stores/translateStore'
+import PageCard from '../components/ui/PageCard.vue'
 
 interface TranslateResult {
   id: string
@@ -401,11 +402,54 @@ const navigateToPage = (page: string) => {
 </script>
 
 <template>
-  <div class="translate-results-container">
-    <v-card class="results-card" :theme="isDark ? 'dark' : 'light'">
+  <PageCard>
+    <div class="main-container">
+      <!-- 过滤器区域 -->
+      <div class="filters-container">
+        <v-text-field
+          v-model="search"
+          label="搜索"
+          prepend-inner-icon="mdi-magnify"
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          clearable
+          class="filter-item"
+        ></v-text-field>
+        <v-select
+          v-model="selectedType"
+          :items="types"
+          label="类型"
+          multiple
+          chips
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          class="filter-item"
+        ></v-select>
+        <v-select
+          v-model="selectedStatus"
+          :items="statuses"
+          label="状态"
+          multiple
+          chips
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          class="filter-item"
+        ></v-select>
+        <v-btn
+          variant="text"
+          color="primary"
+          @click="clearFilters"
+          prepend-icon="mdi-filter-off"
+          class="filter-item"
+        >
+          清除筛选
+        </v-btn>
+      </div>
       <!-- 工具栏 -->
       <v-toolbar density="comfortable" color="surface">
-        <v-toolbar-title class="text-h6">翻译结果</v-toolbar-title>
         <v-spacer></v-spacer>
         <v-btn
           prepend-icon="mdi-export"
@@ -416,57 +460,9 @@ const navigateToPage = (page: string) => {
           导出结果
         </v-btn>
       </v-toolbar>
-
-      <!-- 过滤器区域 -->
-      <v-card-text>
-        <div class="filters-container">
-          <v-text-field
-            v-model="search"
-            label="搜索"
-            prepend-inner-icon="mdi-magnify"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            clearable
-            class="filter-item"
-          ></v-text-field>
-          <v-select
-            v-model="selectedType"
-            :items="types"
-            label="类型"
-            multiple
-            chips
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            class="filter-item"
-          ></v-select>
-          <v-select
-            v-model="selectedStatus"
-            :items="statuses"
-            label="状态"
-            multiple
-            chips
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            class="filter-item"
-          ></v-select>
-          <v-btn
-            variant="text"
-            color="primary"
-            @click="clearFilters"
-            prepend-icon="mdi-filter-off"
-            class="filter-item"
-          >
-            清除筛选
-          </v-btn>
-        </div>
-      </v-card-text>
-
-      <!-- 结果列表 -->
-      <v-card-text class="px-0">
-        <v-table fixed-header height="calc(100vh - 380px)">
+      <!-- 表格区域 -->
+      <div class="table-container">
+        <v-table fixed-header height="100%">
           <thead>
             <tr>
               <th class="text-left">类型</th>
@@ -582,10 +578,10 @@ const navigateToPage = (page: string) => {
             </tr>
           </tbody>
         </v-table>
-      </v-card-text>
+      </div>
 
       <!-- 分页控件 -->
-      <v-card-text class="pagination d-flex align-center justify-space-between">
+      <div class="pagination d-flex align-center justify-space-between">
         <div class="text-caption text-grey d-flex align-center">
           <span>第 {{ startItem }}-{{ endItem }} 条，共 {{ filteredResults.length }} 条</span>
         </div>
@@ -616,8 +612,8 @@ const navigateToPage = (page: string) => {
             active-color="primary"
           ></v-pagination>
         </div>
-      </v-card-text>
-    </v-card>
+      </div>
+    </div>
 
     <!-- 详情对话框 -->
     <v-dialog v-model="detailDialog" max-width="1000">
@@ -749,27 +745,18 @@ const navigateToPage = (page: string) => {
     >
       {{ snackbarText }}
     </v-snackbar>
-  </div>
+  </PageCard>
 </template>
 
 <style scoped>
-.translate-results-container {
-  width: 100%;
-  height: 100%;
-  padding: 16px;
-}
-
-.results-card {
-  height: 100%;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
 .filters-container {
   display: flex;
   gap: 16px;
   align-items: center;
   flex-wrap: nowrap;
+  padding: 16px;
+  min-height: 72px; /* 固定搜索栏高度 */
+  background: rgb(var(--v-theme-surface));
 }
 
 .filter-item {
@@ -779,6 +766,30 @@ const navigateToPage = (page: string) => {
 
 .filter-item:last-child {
   flex: 0 0 auto;
+}
+
+/* 主容器样式 */
+.main-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* 占满PageCard的高度 */
+}
+
+/* 表格容器样式 */
+.table-container {
+  flex: 1;
+  min-height: 0; /* 允许flex-grow收缩 */
+  overflow: hidden;
+  padding: 0 16px;
+}
+
+:deep(.v-table) {
+  height: 100%;
+}
+
+:deep(.v-table__wrapper) {
+  height: 100%;
+  overflow: auto !important;
 }
 
 .text-content {
@@ -867,20 +878,13 @@ const navigateToPage = (page: string) => {
   padding: 12px 20px;
 }
 
-:deep(.v-card-title) {
-  padding: 20px;
-}
-
-:deep(.v-card-text) {
-  padding-top: 20px;
-}
-
 /* 分页相关样式 */
 .pagination {
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   padding: 16px 24px;
-  margin: 0;
+  min-height: 84px; /* 固定分页栏高度 */
   background: rgb(var(--v-theme-surface));
+  margin-top: 16px;
 }
 
 .page-size-select {

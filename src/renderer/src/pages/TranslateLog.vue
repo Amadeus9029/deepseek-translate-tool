@@ -1,11 +1,131 @@
 <template>
-  <div class="page-container">
-    <div class="header">
-      <div class="d-flex align-center">
-        <v-icon size="24" color="primary" class="mr-2">mdi-text-box-outline</v-icon>
-        <span class="text-h6">翻译日志</span>
+  <PageCard>
+    <div class="main-container">
+      <!-- 过滤器区域 -->
+      <div class="filters-container">
+        <v-row dense>
+          <v-col cols="12" sm="4">
+            <v-text-field
+              v-model="filters.fileName"
+              label="按文件名搜索"
+              density="compact"
+              variant="outlined"
+              prepend-inner-icon="mdi-magnify"
+              hide-details
+              class="search-field"
+              clearable
+            ></v-text-field>
+          </v-col>
+          <v-col cols="12" sm="4">
+            <v-select
+              v-model="filters.status"
+              :items="statusOptions"
+              label="完成状态"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="status-select"
+              multiple
+              chips
+              item-title="title"
+              item-value="value"
+              @update:model-value="handleStatusChange"
+            ></v-select>
+          </v-col>
+          <v-col cols="12" sm="4">
+            <v-select
+              v-model="filters.translateType"
+              :items="translateTypeOptions"
+              label="翻译类型"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="type-select"
+              multiple
+              chips
+              item-title="title"
+              item-value="value"
+              @update:model-value="handleTypeChange"
+            ></v-select>
+          </v-col>
+          <v-col cols="12" sm="4">
+            <div class="d-flex align-center">
+              <v-menu
+                v-model="startDateMenu"
+                :close-on-content-click="false"
+                transition="scale-transition"
+              >
+                <template v-slot:activator="{ props }">
+                  <v-text-field
+                    v-model="filters.startDate"
+                    label="开始日期"
+                    readonly
+                    density="compact"
+                    variant="outlined"
+                    prepend-inner-icon="mdi-calendar"
+                    hide-details
+                    v-bind="props"
+                    clearable
+                    @click:clear="clearStartDate"
+                    class="mr-2"
+                  ></v-text-field>
+                </template>
+                <v-date-picker
+                  v-model="dateRange.start"
+                  :max="dateRange.end"
+                  @update:model-value="updateDateRange"
+                  class="date-picker"
+                  locale="zh-cn"
+                ></v-date-picker>
+              </v-menu>
+            </div>
+          </v-col>
+          <v-col cols="12" sm="4">
+            <v-menu
+              v-model="endDateMenu"
+              :close-on-content-click="false"
+              transition="scale-transition"
+            >
+              <template v-slot:activator="{ props }">
+                <v-text-field
+                  v-model="filters.endDate"
+                  label="结束日期"
+                  readonly
+                  density="compact"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-calendar"
+                  hide-details
+                  v-bind="props"
+                  clearable
+                  @click:clear="clearEndDate"
+                ></v-text-field>
+              </template>
+              <v-date-picker
+                v-model="dateRange.end"
+                :min="dateRange.start"
+                @update:model-value="updateDateRange"
+                class="date-picker"
+                locale="zh-cn"
+              ></v-date-picker>
+            </v-menu>
+          </v-col>
+          <v-col cols="12" sm="4">
+            <v-btn
+              icon
+              variant="text"
+              size="small"
+              :color="filters.sortOrder === 'desc' ? 'primary' : ''"
+              @click="filters.sortOrder = filters.sortOrder === 'desc' ? 'asc' : 'desc'"
+            >
+              <v-icon>{{ filters.sortOrder === 'desc' ? 'mdi-sort-calendar-descending' : 'mdi-sort-calendar-ascending' }}</v-icon>
+            </v-btn>
+          </v-col>
+        </v-row>
       </div>
-      <div class="d-flex align-center">
+
+      <!-- 工具栏 -->
+      <v-toolbar density="comfortable" color="surface">
+        <v-spacer></v-spacer>
         <v-btn
           variant="tonal"
           color="primary"
@@ -25,229 +145,106 @@
         >
           清空
         </v-btn>
-      </div>
-    </div>
+      </v-toolbar>
 
-    <!-- 过滤器部分 -->
-    <div class="filters">
-      <v-expand-transition>
-        <div class="filter-container pa-4">
-          <v-row dense>
-            <v-col cols="12" sm="4">
-              <v-text-field
-                v-model="filters.fileName"
-                label="按文件名搜索"
-                density="compact"
-                variant="outlined"
-                prepend-inner-icon="mdi-magnify"
-                hide-details
-                class="search-field"
-                clearable
-              ></v-text-field>
-            </v-col>
-            <v-col cols="12" sm="4">
-              <v-select
-                v-model="filters.status"
-                :items="statusOptions"
-                label="完成状态"
-                density="compact"
-                variant="outlined"
-                hide-details
-                class="status-select"
-                multiple
-                chips
-                item-title="title"
-                item-value="value"
-                @update:model-value="handleStatusChange"
-              ></v-select>
-            </v-col>
-            <v-col cols="12" sm="4">
-              <v-select
-                v-model="filters.translateType"
-                :items="translateTypeOptions"
-                label="翻译类型"
-                density="compact"
-                variant="outlined"
-                hide-details
-                class="type-select"
-                multiple
-                chips
-                item-title="title"
-                item-value="value"
-                @update:model-value="handleTypeChange"
-              ></v-select>
-            </v-col>
-            <v-col cols="12" sm="4">
-              <div class="d-flex align-center">
-                <v-menu
-                  v-model="startDateMenu"
-                  :close-on-content-click="false"
-                  transition="scale-transition"
-                >
-                  <template v-slot:activator="{ props }">
-                    <v-text-field
-                      v-model="filters.startDate"
-                      label="开始日期"
-                      readonly
-                      density="compact"
-                      variant="outlined"
-                      prepend-inner-icon="mdi-calendar"
-                      hide-details
-                      v-bind="props"
-                      clearable
-                      @click:clear="clearStartDate"
-                      class="mr-2"
-                    ></v-text-field>
-                  </template>
-                  <v-date-picker
-                    v-model="dateRange.start"
-                    :max="dateRange.end"
-                    @update:model-value="updateDateRange"
-                    class="date-picker"
-                    locale="zh-cn"
-                  ></v-date-picker>
-                </v-menu>
-              </div>
-            </v-col>
-            <v-col cols="12" sm="4">
-              <v-menu
-                v-model="endDateMenu"
-                :close-on-content-click="false"
-                transition="scale-transition"
-              >
-                <template v-slot:activator="{ props }">
-                  <v-text-field
-                    v-model="filters.endDate"
-                    label="结束日期"
-                    readonly
-                    density="compact"
-                    variant="outlined"
-                    prepend-inner-icon="mdi-calendar"
-                    hide-details
-                    v-bind="props"
-                    clearable
-                    @click:clear="clearEndDate"
-                  ></v-text-field>
-                </template>
-                <v-date-picker
-                  v-model="dateRange.end"
-                  :min="dateRange.start"
-                  @update:model-value="updateDateRange"
-                  class="date-picker"
-                  locale="zh-cn"
-                ></v-date-picker>
-              </v-menu>
-            </v-col>
-            <v-col cols="12" sm="4">
-              <v-btn
-                  icon
-                  variant="text"
-                  size="small"
-                  :color="filters.sortOrder === 'desc' ? 'primary' : ''"
-                  @click="filters.sortOrder = filters.sortOrder === 'desc' ? 'asc' : 'desc'"
-                >
-                  <v-icon>{{ filters.sortOrder === 'desc' ? 'mdi-sort-calendar-descending' : 'mdi-sort-calendar-ascending' }}</v-icon>
-                </v-btn>
-            </v-col>
-          </v-row>
+      <!-- 日志内容区域 -->
+      <div class="content-container">
+        <div v-if="filteredLogs.length === 0" class="empty-state">
+          <v-icon size="64" color="grey" class="mb-4">mdi-text-box-outline</v-icon>
+          <div class="text-h6 text-grey">暂无日志记录</div>
+          <div class="text-body-2 text-grey mt-2">尝试调整过滤条件或清除筛选</div>
         </div>
-      </v-expand-transition>
-    </div>
-
-    <div class="content">
-      <div v-if="filteredLogs.length === 0" class="empty-state">
-        <v-icon size="64" color="grey" class="mb-4">mdi-text-box-outline</v-icon>
-        <div class="text-h6 text-grey">暂无日志记录</div>
-        <div class="text-body-2 text-grey mt-2">尝试调整过滤条件或清除筛选</div>
-      </div>
-      <div v-else class="log-list">
-        <v-slide-y-transition group>
-          <v-card 
-            v-for="(log, index) in paginatedLogs" 
-            :key="index" 
-            class="log-item mb-4" 
-            variant="outlined"
-            :elevation="0"
-            :class="{ 'error-card': log.error }"
-          >
-          <v-card-item>
-            <div class="d-flex align-center justify-space-between mb-2">
-              <div class="d-flex align-center">
-                <v-chip
-                  :color="getStatusColor(log)"
-                  size="small"
-                    class="mr-2"
-                  label
-                >
-                  {{ log.completed ? '已完成' : '未完成' }}
-                </v-chip>
+        <div v-else class="log-list">
+          <v-slide-y-transition group>
+            <v-card 
+              v-for="(log, index) in paginatedLogs" 
+              :key="index" 
+              class="log-item mb-4" 
+              variant="outlined"
+              :elevation="0"
+              :class="{ 'error-card': log.error }"
+            >
+            <v-card-item>
+              <div class="d-flex align-center justify-space-between mb-2">
+                <div class="d-flex align-center">
                   <v-chip
-                    color="primary"
+                    :color="getStatusColor(log)"
                     size="small"
-                    class="mr-3"
-                    variant="outlined"
+                      class="mr-2"
                     label
                   >
-                    {{ getTranslateTypeName(log.translateType) }}
+                    {{ log.completed ? '已完成' : '未完成' }}
                   </v-chip>
-                  <span class="text-subtitle-1 font-weight-medium text-truncate">{{ log.fileName }}</span>
+                    <v-chip
+                      color="primary"
+                      size="small"
+                      class="mr-3"
+                      variant="outlined"
+                      label
+                    >
+                      {{ getTranslateTypeName(log.translateType) }}
+                    </v-chip>
+                    <span class="text-subtitle-1 font-weight-medium text-truncate">{{ log.fileName }}</span>
+                </div>
+                <span class="text-caption text-grey">{{ formatDate(log.startTime) }}</span>
               </div>
-              <span class="text-caption text-grey">{{ formatDate(log.startTime) }}</span>
-            </div>
 
-            <v-divider class="mb-4"></v-divider>
+              <v-divider class="mb-4"></v-divider>
 
-            <div class="log-details">
-                <div class="detail-grid">
-                  <div class="detail-item">
-                <v-icon size="20" color="primary" class="mr-2">mdi-file-document</v-icon>
-                    <span class="text-body-2">文件：<span class="text-medium">{{ log.fileName }}</span></span>
+              <div class="log-details">
+                  <div class="detail-grid">
+                    <div class="detail-item">
+                  <v-icon size="20" color="primary" class="mr-2">mdi-file-document</v-icon>
+                      <span class="text-body-2">文件：<span class="text-medium">{{ log.fileName }}</span></span>
+                    </div>
+                    <div class="detail-item">
+                  <v-icon size="20" color="primary" class="mr-2">mdi-translate</v-icon>
+                      <span class="text-body-2">语言：<span class="text-medium">{{ log.sourceLanguage }} → {{ log.targetLanguage }}</span></span>
+                    </div>
+                    <div class="detail-item">
+                  <v-icon size="20" color="primary" class="mr-2">mdi-counter</v-icon>
+                      <span class="text-body-2">翻译数量：<span class="text-medium">{{ log.translateCount }}</span></span>
+                    </div>
+                    <div class="detail-item">
+                  <v-icon size="20" color="primary" class="mr-2">mdi-clock-start</v-icon>
+                      <span class="text-body-2">开始时间：<span class="text-medium">{{ formatDate(log.startTime) }}</span></span>
+                    </div>
+                    <div class="detail-item" v-if="log.endTime">
+                  <v-icon size="20" color="primary" class="mr-2">mdi-clock-end</v-icon>
+                      <span class="text-body-2">结束时间：<span class="text-medium">{{ formatDate(log.endTime) }}</span></span>
+                    </div>
+                    <div class="detail-item" v-if="log.duration">
+                  <v-icon size="20" color="primary" class="mr-2">mdi-timer</v-icon>
+                      <span class="text-body-2">总用时：<span class="text-medium">{{ formatDuration(log.duration) }}</span></span>
+                    </div>
+                </div>
+                <div v-if="log.error" class="error-message mt-3">
+                    <pre class="error-text">{{ log.error }}</pre>
+                </div>
               </div>
-                  <div class="detail-item">
-                <v-icon size="20" color="primary" class="mr-2">mdi-translate</v-icon>
-                    <span class="text-body-2">语言：<span class="text-medium">{{ log.sourceLanguage }} → {{ log.targetLanguage }}</span></span>
-              </div>
-                  <div class="detail-item">
-                <v-icon size="20" color="primary" class="mr-2">mdi-counter</v-icon>
-                    <span class="text-body-2">翻译数量：<span class="text-medium">{{ log.translateCount }}</span></span>
-              </div>
-                  <div class="detail-item">
-                <v-icon size="20" color="primary" class="mr-2">mdi-clock-start</v-icon>
-                    <span class="text-body-2">开始时间：<span class="text-medium">{{ formatDate(log.startTime) }}</span></span>
-              </div>
-                  <div class="detail-item" v-if="log.endTime">
-                <v-icon size="20" color="primary" class="mr-2">mdi-clock-end</v-icon>
-                    <span class="text-body-2">结束时间：<span class="text-medium">{{ formatDate(log.endTime) }}</span></span>
-              </div>
-                  <div class="detail-item" v-if="log.duration">
-                <v-icon size="20" color="primary" class="mr-2">mdi-timer</v-icon>
-                    <span class="text-body-2">总用时：<span class="text-medium">{{ formatDuration(log.duration) }}</span></span>
-                  </div>
-              </div>
-              <div v-if="log.error" class="error-message mt-3">
-                  <pre class="error-text">{{ log.error }}</pre>
-              </div>
-            </div>
-          </v-card-item>
-        </v-card>
-        </v-slide-y-transition>
+            </v-card-item>
+          </v-card>
+          </v-slide-y-transition>
+        </div>
       </div>
 
       <!-- 分页控件 -->
-      <div class="pagination d-flex align-center justify-end">
+      <div class="pagination d-flex align-center justify-space-between">
+        <div class="text-caption text-grey d-flex align-center">
+          <span>第 {{ startItem }}-{{ endItem }} 条，共 {{ filteredLogs.length }} 条</span>
+        </div>
         <div class="d-flex align-center gap-4">
           <v-select
             v-model="pageSize"
             :items="pageSizeOptions"
+            item-title="title"
+            item-value="value"
             label="每页显示"
             density="compact"
             variant="outlined"
             hide-details
             class="page-size-select"
           ></v-select>
-          <div class="text-caption text-grey d-flex align-center">
-            <span>第 {{ startItem }}-{{ endItem }} 条，共 {{ filteredLogs.length }} 条</span>
-          </div>
           <v-pagination
             v-model="currentPage"
             :length="totalPages"
@@ -259,15 +256,18 @@
             :first-icon="'mdi-chevron-double-left'"
             :last-icon="'mdi-chevron-double-right'"
             show-first-last
+            rounded
+            active-color="primary"
           ></v-pagination>
         </div>
       </div>
     </div>
-  </div>
+  </PageCard>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import PageCard from '../components/ui/PageCard.vue'
 
 interface LogEntry {
   fileName: string
@@ -544,46 +544,27 @@ onMounted(async () => {
 </style>
 
 <style scoped>
-.page-container {
-  width: 100%;
-  height: 100%;
+/* 主容器样式 */
+.main-container {
   display: flex;
   flex-direction: column;
+  height: 100%;
+}
+
+/* 过滤器区域样式 */
+.filters-container {
+  padding: 16px;
+  min-height: 72px;
   background: rgb(var(--v-theme-surface));
-  position: relative;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
-  background: rgb(var(--v-theme-surface));
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
-.filters {
-  background: rgb(var(--v-theme-surface));
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  position: sticky;
-  top: 64px;
-  z-index: 2;
-}
-
-.filter-container {
-  background: rgba(var(--v-theme-surface-variant), 0.05);
-}
-
-.content {
+/* 内容区域样式 */
+.content-container {
   flex: 1;
-  overflow-y: auto;
-  padding: 16px 24px;
-  background: rgba(var(--v-theme-surface-variant), 0.02);
-  padding-bottom: 80px;
-  position: relative;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 16px;
+  margin: 16px 0;
 }
 
 .log-list {
@@ -608,44 +589,6 @@ onMounted(async () => {
   border-left: 4px solid rgb(var(--v-theme-error));
 }
 
-.log-details {
-  padding: 12px;
-  background: rgba(var(--v-theme-surface-variant), 0.03);
-  border-radius: 6px;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 12px;
-}
-
-.detail-item {
-  display: flex;
-  align-items: center;
-  padding: 4px 8px;
-}
-
-.text-medium {
-  font-weight: 500;
-}
-
-.error-message {
-  margin: 8px;
-  padding: 12px;
-  background: rgba(var(--v-theme-error), 0.05);
-  border-radius: 6px;
-}
-
-.error-text {
-  color: rgb(var(--v-theme-error));
-  font-family: 'Consolas', monospace;
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 0;
-  white-space: pre-wrap;
-}
-
 .empty-state {
   height: 100%;
   display: flex;
@@ -655,18 +598,12 @@ onMounted(async () => {
   padding: 40px;
 }
 
+/* 分页相关样式 */
 .pagination {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgb(var(--v-theme-surface));
-  padding: 16px 24px;
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  z-index: 3;
-  backdrop-filter: blur(10px);
-  margin: 0;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+  padding: 16px 24px;
+  min-height: 84px;
+  background: rgb(var(--v-theme-surface));
 }
 
 .page-size-select {
@@ -681,74 +618,40 @@ onMounted(async () => {
   gap: 16px;
 }
 
-.search-field,
-.status-select,
-.type-select {
-  transition: all 0.3s ease;
-}
-
-.search-field:hover,
-.status-select:hover,
-.type-select:hover {
-  transform: translateY(-1px);
-}
-
-.v-menu__content {
-  max-height: none !important;
-}
-
-.v-date-picker {
-  width: 320px;
-}
-
 /* 自定义滚动条样式 */
-.content::-webkit-scrollbar {
+.content-container::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
+}
+
+.content-container::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.content::-webkit-scrollbar-thumb {
+.content-container::-webkit-scrollbar-thumb {
   background: rgba(var(--v-theme-on-surface), 0.2);
   border-radius: 4px;
 }
 
-.content::-webkit-scrollbar-thumb:hover {
+.content-container::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--v-theme-on-surface), 0.3);
 }
 
 /* 响应式布局调整 */
 @media (max-width: 768px) {
   .pagination {
-    padding: 16px;
-  }
-
-  .pagination .d-flex {
     flex-direction: column;
-    align-items: flex-end;
-    gap: 12px;
+    align-items: flex-start;
+    gap: 16px;
   }
-
-  .page-size-select {
-    width: 140px;
-  }
-
-  .pagination-control {
+  
+  .pagination .d-flex {
     width: 100%;
-    justify-content: flex-end;
+    justify-content: space-between;
   }
-}
-
-.date-picker {
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.v-date-picker {
-  width: 360px;
+  
+  .page-size-select {
+    width: 100px;
+  }
 }
 </style> 

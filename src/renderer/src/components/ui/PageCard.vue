@@ -33,8 +33,10 @@ defineProps({
   width: 100%;
   height: 100%;
   background: rgb(var(--v-theme-surface));
-  border: 1px solid rgb(var(--v-theme-surface-variant));
+  /* border: 1px solid rgb(var(--v-theme-surface-variant)); */
   border-radius: 8px;
+  border: none;
+  padding-right: 8px;
 }
 
 .translate-title {
