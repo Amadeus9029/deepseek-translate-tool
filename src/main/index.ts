@@ -85,6 +85,19 @@ function createWindow(): BrowserWindow {
   // 在开发环境中加载远程URL，在生产环境中加载本地HTML文件
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    // 在开发环境中启用右键菜单
+    mainWindow.webContents.on('context-menu', (_, props) => {
+      const { Menu } = require('electron')
+      const menu = Menu.buildFromTemplate([
+        {
+          label: '检查元素',
+          click: () => {
+            mainWindow.webContents.inspectElement(props.x, props.y)
+          }
+        }
+      ])
+      menu.popup()
+    })
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }

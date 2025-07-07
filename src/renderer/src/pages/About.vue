@@ -79,18 +79,21 @@ onMounted(async () => {
 }
 
 .about-scroll-container::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 6px;
+}
+
+.about-scroll-container::-webkit-scrollbar-track {
   background: transparent;
 }
 
 .about-scroll-container::-webkit-scrollbar-thumb {
-  background: #e0e0e0;
-  border-radius: 6px;
-  min-height: 40px;
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 3px;
 }
 
 .about-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #bdbdbd;
+  background: rgba(var(--v-theme-on-surface), 0.3);
 }
 
 .about-header {
