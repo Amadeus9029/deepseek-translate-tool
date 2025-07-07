@@ -1,154 +1,117 @@
 <template>
-  <div class="document-translate">
-    <v-card class="translate-card" flat>
-      <v-card-text>
-        <!-- 文件设置 -->
-        <div class="section">
-          <div class="section-title">文件设置</div>
-          <div class="file-input-row">
-            <div class="label">Excel文件:</div>
-            <v-text-field
-              v-model="store.documentTranslate.excelFile"
-              hide-details
-              density="compact"
-              variant="outlined"
-              readonly
-              placeholder="请选择Excel文件"
-              class="file-input"
-            ></v-text-field>
-            <v-btn 
-              color="primary" 
-              class="select-btn" 
-              @click="selectFile"
+  <PageCard>
+    <!-- 文件设置 -->
+    <div class="section">
+      <SectionHeader title="文件设置" />
+      <FileSelector
+        :filePath="store.documentTranslate.excelFile"
+        label="Excel文件"
+        placeholder="请选择Excel文件"
+        :disabled="store.documentTranslate.isTranslating"
+        buttonText="选择文件"
+        @select="selectFile"
+      />
+    </div>
+
+    <!-- 翻译参考设置 -->
+    <div class="section">
+      <SectionHeader title="翻译参考设置" />
+      <div class="reference-options">
+        <v-radio-group v-model="store.documentTranslate.referenceType" inline hide-details>
+          <v-radio label="不使用参考源" value="none"></v-radio>
+          <v-radio label="使用内置参考源" value="internal"></v-radio>
+          <v-radio label="使用外置参考源" value="external"></v-radio>
+        </v-radio-group>
+
+        <!-- 内置参考源设置 -->
+        <div v-if="store.documentTranslate.referenceType === 'internal'" class="mt-4">
+          <v-select
+            v-model="store.documentTranslate.internalRefLang"
+            :items="availableLanguages"
+            label="选择参考语言列"
+            hide-details
+            density="compact"
+            variant="outlined"
+            class="reference-select"
+          ></v-select>
+        </div>
+
+        <!-- 外置参考源设置 -->
+        <div v-if="store.documentTranslate.referenceType === 'external'" class="mt-4">
+          <div class="mb-2">
+            <FileSelector
+              :filePath="store.documentTranslate.externalRefFile"
+              placeholder="请选择参考Excel文件"
               :disabled="store.documentTranslate.isTranslating"
-            >
-              选择文件
-            </v-btn>
+              buttonText="选择文件"
+              @select="selectRefFile"
+            />
           </div>
+          <v-select
+            v-model="store.documentTranslate.externalRefLang"
+            :items="availableLanguages"
+            label="选择参考语言列"
+            hide-details
+            density="compact"
+            variant="outlined"
+            class="reference-select"
+          ></v-select>
         </div>
+      </div>
+    </div>
 
-        <!-- 翻译参考设置 -->
-        <div class="section">
-          <div class="section-title">翻译参考设置</div>
-          <div class="reference-options">
-            <v-radio-group v-model="store.documentTranslate.referenceType" inline hide-details>
-              <v-radio label="不使用参考源" value="none"></v-radio>
-              <v-radio label="使用内置参考源" value="internal"></v-radio>
-              <v-radio label="使用外置参考源" value="external"></v-radio>
-            </v-radio-group>
-
-            <!-- 内置参考源设置 -->
-            <div v-if="store.documentTranslate.referenceType === 'internal'" class="mt-4">
-              <v-select
-                v-model="store.documentTranslate.internalRefLang"
-                :items="availableLanguages"
-                label="选择参考语言列"
-                hide-details
-                density="compact"
-                variant="outlined"
-                class="reference-select"
-              ></v-select>
-            </div>
-
-            <!-- 外置参考源设置 -->
-            <div v-if="store.documentTranslate.referenceType === 'external'" class="mt-4">
-              <div class="file-input-row mb-2">
-                <v-text-field
-                  v-model="store.documentTranslate.externalRefFile"
-                  hide-details
-                  density="compact"
-                  variant="outlined"
-                  readonly
-                  placeholder="请选择参考Excel文件"
-                  class="file-input"
-                ></v-text-field>
-                <v-btn 
-                  color="primary" 
-                  class="select-btn" 
-                  @click="selectRefFile"
-                  :disabled="store.documentTranslate.isTranslating"
-                >
-                  选择文件
-                </v-btn>
-              </div>
-              <v-select
-                v-model="store.documentTranslate.externalRefLang"
-                :items="availableLanguages"
-                label="选择参考语言列"
-                hide-details
-                density="compact"
-                variant="outlined"
-                class="reference-select"
-              ></v-select>
-            </div>
-          </div>
+    <!-- 语言设置 -->
+    <div class="section">
+      <SectionHeader title="语言设置" />
+      <div class="language-settings">
+        <div class="source-language">
+          <div class="label">源语言:</div>
+          <v-autocomplete
+            v-model="store.documentTranslate.sourceLanguage"
+            :items="availableLanguages"
+            hide-details
+            density="compact"
+            variant="outlined"
+            class="language-select"
+            item-title="text"
+            item-value="value"
+            return-object
+            :menu-props="{ maxHeight: 300 }"
+          ></v-autocomplete>
         </div>
-
-        <!-- 语言设置 -->
-        <div class="section">
-          <div class="section-title">语言设置</div>
-          <div class="language-settings">
-            <div class="source-language">
-              <div class="label">源语言:</div>
-              <v-autocomplete
-                v-model="store.documentTranslate.sourceLanguage"
-                :items="availableLanguages"
-                hide-details
-                density="compact"
-                variant="outlined"
-                class="language-select"
-                item-title="text"
-                item-value="value"
-                return-object
-                :menu-props="{ maxHeight: 300 }"
-              ></v-autocomplete>
-            </div>
-            <div class="target-languages">
-              <v-checkbox
-                v-for="lang in availableLanguages"
-                :key="lang.value"
-                v-model="store.documentTranslate.selectedLanguages"
-                :label="lang.text"
-                :value="lang.value"
-                hide-details
-                density="compact"
-                class="language-checkbox"
-              ></v-checkbox>
-            </div>
-          </div>
+        <div class="target-languages">
+          <v-checkbox
+            v-for="lang in availableLanguages"
+            :key="lang.value"
+            v-model="store.documentTranslate.selectedLanguages"
+            :label="lang.text"
+            :value="lang.value"
+            hide-details
+            density="compact"
+            class="language-checkbox"
+          ></v-checkbox>
         </div>
+      </div>
+    </div>
 
-        <!-- 开始翻译按钮 -->
-        <div class="action-section">
-          <v-btn 
-            color="primary" 
-            size="large" 
-            class="start-btn" 
-            @click="startTranslate"
-            :loading="store.documentTranslate.isTranslating"
-            :disabled="store.documentTranslate.isTranslating"
-          >
-            {{ store.documentTranslate.isTranslating ? '翻译中...' : '开始翻译' }}
-          </v-btn>
-        </div>
+    <!-- 开始翻译按钮 -->
+    <ActionSection>
+      <ActionButton
+        label="开始翻译"
+        loadingText="翻译中..."
+        :loading="store.documentTranslate.isTranslating"
+        :disabled="store.documentTranslate.isTranslating"
+        @click="startTranslate"
+      />
+    </ActionSection>
 
-        <!-- 运行日志 -->
-        <div class="section">
-          <div class="section-title">运行日志</div>
-          <div class="log-container">
-            <div v-if="store.documentTranslate.logs.length === 0" class="empty-log">
-              暂无日志信息
-            </div>
-            <div v-else class="log-content">
-              <div v-for="(log, index) in store.documentTranslate.logs" :key="index" class="log-item">
-                {{ log }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </v-card-text>
-    </v-card>
-  </div>
+    <!-- 运行日志 -->
+    <LogDisplay
+      :logs="store.documentTranslate.logs"
+      title="运行日志"
+      emptyText="暂无日志信息"
+    />
+  </PageCard>
 </template>
 
 <script setup lang="ts">
@@ -156,87 +119,63 @@ import { onMounted } from 'vue'
 import { getUnifiedTranslateService } from '../services/TranslateService'
 import { availableLanguages, type LanguageOption } from '../constants/languages'
 import { useTranslateStore } from '../stores/translateStore'
+import { DocumentTranslateHandler, type ExcelRow } from '../services/TranslateHandlers'
+import PageCard from '../components/ui/PageCard.vue'
+import FileSelector from '../components/ui/FileSelector.vue'
+import SectionHeader from '../components/ui/SectionHeader.vue'
+import ActionButton from '../components/ui/ActionButton.vue'
+import ActionSection from '../components/ui/ActionSection.vue'
+import LogDisplay from '../components/ui/LogDisplay.vue'
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 const store = useTranslateStore()
-
-interface ExcelRow {
-  [key: string]: string | number | boolean | null | undefined
-}
 
 // 组件挂载时初始化状态
 onMounted(() => {
   // 如果状态为空，设置默认值
   if (!store.documentTranslate.sourceLanguage) {
-    store.documentTranslate.sourceLanguage = { text: '英语', value: '英语' }
+    store.documentTranslate.sourceLanguage = { text: '英语', value: '英语' } as LanguageOption
   }
 })
 
+// 选择Excel文件
 async function selectFile() {
-  if (!ipcRenderer) return
+  const filePath = await DocumentTranslateHandler.selectFile(
+    ipcRenderer, 
+    store.addDocumentLog
+  )
   
-  try {
-    const result = await ipcRenderer.invoke('open-file-dialog', {
-      filters: [
-        { name: 'Excel Files', extensions: ['xlsx', 'xls'] }
-      ]
-    })
-    
-    if (result.filePath) {
-      store.documentTranslate.excelFile = result.filePath
-      store.addDocumentLog(`已选择文件: ${result.filePath}`)
-    }
-  } catch (error) {
-    console.error('选择文件失败:', error)
+  if (filePath) {
+    store.documentTranslate.excelFile = filePath
   }
 }
 
+// 选择参考Excel文件
 async function selectRefFile() {
-  if (!ipcRenderer) return
+  const filePath = await DocumentTranslateHandler.selectRefFile(
+    ipcRenderer, 
+    store.addDocumentLog
+  )
   
-  try {
-    const result = await ipcRenderer.invoke('open-file-dialog', {
-      filters: [
-        { name: 'Excel Files', extensions: ['xlsx', 'xls'] }
-      ]
-    })
-    
-    if (result.filePath) {
-      store.documentTranslate.externalRefFile = result.filePath
-      store.addDocumentLog(`已选择参考文件: ${result.filePath}`)
-    }
-  } catch (error) {
-    console.error('选择参考文件失败:', error)
+  if (filePath) {
+    store.documentTranslate.externalRefFile = filePath
   }
 }
 
+// 开始翻译
 async function startTranslate() {
-  if (!store.documentTranslate.excelFile) {
-    store.addDocumentLog('请先选择要翻译的文件')
-    return
-  }
-
-  if (store.documentTranslate.selectedLanguages.length === 0) {
-    store.addDocumentLog('请选择至少一个目标语言')
-    return
-  }
-
-  // 验证参考源设置
-  if (store.documentTranslate.referenceType === 'internal' && !store.documentTranslate.internalRefLang) {
-    store.addDocumentLog('请选择内置参考源语言')
-    return
-  }
-
-  if (store.documentTranslate.referenceType === 'external') {
-    if (!store.documentTranslate.externalRefFile) {
-      store.addDocumentLog('请选择外置参考源文件')
-      return
-    }
-    if (!store.documentTranslate.externalRefLang) {
-      store.addDocumentLog('请选择外置参考源语言')
-      return
-    }
-  }
+  // 验证参数
+  const isValid = DocumentTranslateHandler.validateTranslateParams(
+    store.documentTranslate.excelFile,
+    store.documentTranslate.selectedLanguages,
+    store.documentTranslate.referenceType,
+    store.documentTranslate.internalRefLang,
+    store.documentTranslate.externalRefFile,
+    store.documentTranslate.externalRefLang,
+    store.addDocumentLog
+  )
+  
+  if (!isValid) return
 
   // 创建日志对象
   const startTime = new Date().toISOString()
@@ -430,75 +369,6 @@ async function startTranslate() {
 </script>
 
 <style scoped>
-.document-translate {
-  width: 100%;
-  height: 100%;
-  padding: 16px;
-  display: flex;
-  overflow: hidden;
-}
-
-.translate-card {
-  width: 100%;
-  height: 100%;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgb(var(--v-theme-surface-variant));
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-}
-
-.v-card-text {
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 8px; /* 为滚动条预留空间 */
-}
-
-/* 美化v-card-text的滚动条 */
-.v-card-text::-webkit-scrollbar {
-  width: 8px;
-  background: transparent;
-}
-
-.v-card-text::-webkit-scrollbar-thumb {
-  background: rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: 4px;
-}
-
-.v-card-text::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--v-theme-on-surface), 0.3);
-}
-
-.section {
-  margin-bottom: 24px;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 500;
-  margin-bottom: 16px;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.file-input-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.label {
-  min-width: 80px;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.file-input {
-  flex: 1;
-}
-
-.select-btn {
-  min-width: 100px;
-}
-
 .reference-options {
   padding: 16px;
   background: rgba(var(--v-theme-surface-variant), 0.1);
@@ -517,6 +387,11 @@ async function startTranslate() {
   gap: 16px;
 }
 
+.label {
+  min-width: 80px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
 .language-select {
   width: 200px;
 }
@@ -532,37 +407,11 @@ async function startTranslate() {
   margin: 0;
 }
 
-.action-section {
-  display: flex;
-  justify-content: center;
-  margin: 32px 0;
-}
-
-.start-btn {
-  min-width: 160px;
-}
-
-.log-container {
-  height: 200px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgb(var(--v-theme-surface-variant));
-  border-radius: 4px;
-  padding: 16px;
-  overflow-y: auto;
-}
-
-.empty-log {
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  text-align: center;
-  padding: 16px;
-}
-
-.log-item {
-  padding: 4px 0;
-  color: rgb(var(--v-theme-on-surface));
-}
-
 .reference-select {
   width: 200px;
+}
+
+.section {
+  margin-bottom: 24px;
 }
 </style> 

@@ -10,13 +10,42 @@ import * as directives from 'vuetify/directives'
 // Material Design Icons
 import { aliases, mdi } from 'vuetify/iconsets/mdi'
 import '@mdi/font/css/materialdesignicons.css'
+// i18n
+import { i18n, initI18n } from './i18n'
 // Components
 import App from './App.vue'
 import { initTranslateService } from './services/TranslateService'
+import { settings, loadSettings } from './services/SettingsService'
 import config from './config/config'
 
 // 初始化翻译服务
 initTranslateService(config.apiKey)
+
+// 确保加载设置
+loadSettings()
+
+// 获取主题设置
+const getThemeMode = () => {
+  // 首先尝试从设置中获取
+  if (settings.value.themeMode) {
+    return settings.value.themeMode
+  }
+  
+  // 其次尝试从localStorage获取
+  const savedTheme = localStorage.getItem('theme-mode')
+  if (savedTheme) {
+    return savedTheme as 'system' | 'light' | 'dark'
+  }
+  
+  // 默认使用system
+  return 'system'
+}
+
+// 确定初始主题
+const initialTheme = getThemeMode()
+const effectiveTheme = initialTheme === 'system' 
+  ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+  : initialTheme
 
 const vuetify = createVuetify({
   components,
@@ -29,7 +58,7 @@ const vuetify = createVuetify({
     }
   },
   theme: {
-    defaultTheme: 'light',
+    defaultTheme: effectiveTheme,
     themes: {
       light: {
         dark: false,
@@ -52,10 +81,14 @@ const vuetify = createVuetify({
 // 创建Pinia实例
 const pinia = createPinia()
 
+// 初始化i18n
+await initI18n()
+
 // 创建Vue应用
 const app = createApp(App)
 app.use(vuetify)
 app.use(pinia)
+app.use(i18n)
 app.mount('#app')
 
 const updateTheme = (mode: string) => {
@@ -68,9 +101,9 @@ const updateTheme = (mode: string) => {
   }
 }
 
-// 在组件初始化时读取存储的主题
-const savedTheme = localStorage.getItem('theme-mode')
-if (savedTheme) {
-  vuetify.theme.global.name.value = savedTheme
-  updateTheme(savedTheme)
-}
+// 监听系统主题变化
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+  if (getThemeMode() === 'system') {
+    vuetify.theme.global.name.value = e.matches ? 'dark' : 'light'
+  }
+})

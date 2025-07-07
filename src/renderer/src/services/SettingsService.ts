@@ -15,6 +15,10 @@ interface Settings {
   useOllama: boolean;
   ollamaUrl: string;
   ollamaModel: string;
+  // 主题设置
+  themeMode?: 'system' | 'light' | 'dark';
+  // 语言设置
+  language: string;
 }
 
 // Ollama模型数据接口 - 简化版
@@ -37,7 +41,11 @@ const defaultSettings: Settings = {
   // Ollama 默认设置
   useOllama: false,
   ollamaUrl: 'http://localhost:11434',
-  ollamaModel: 'deepseek-r1:7b'
+  ollamaModel: 'deepseek-r1:7b',
+  // 主题默认设置
+  themeMode: 'system',
+  // 语言默认设置
+  language: 'zh-CN'
 }
 
 // 默认Ollama模型数据 - 简化版

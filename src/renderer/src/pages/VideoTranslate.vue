@@ -1,90 +1,29 @@
 <template>
-  <div class="page-container">
-    <v-card class="translate-card" flat>
-      <v-card-text>
+  <PageCard>
         <!-- 文件设置 -->
         <div class="section">
-          <div class="section-title">字幕文件</div>
-          <div class="file-input-row">
-            <div class="label">字幕文件:</div>
-            <v-text-field
-              v-model="translateStore.subtitleFile"
-              hide-details
-              density="compact"
-              variant="outlined"
-              readonly
+      <SectionHeader title="字幕文件" />
+      <FileSelector
+        :filePath="translateStore.subtitleFile"
+        label="字幕文件"
               placeholder="请选择字幕文件"
-              class="file-input"
-            ></v-text-field>
-            <v-btn 
-              color="primary" 
-              class="select-btn" 
-              @click="selectFile"
+        buttonText="选择文件"
               :disabled="translateStore.videoTranslate.isTranslating"
-            >
-              选择文件
-            </v-btn>
-          </div>
+        @select="selectFile"
+      />
         </div>
 
         <!-- 语言设置 -->
         <div class="section">
-          <div class="section-title">语言设置</div>
-          <div class="source-language">
-            <v-autocomplete
-              v-model="translateStore.videoTranslate.sourceLanguage"
-              :items="availableLanguages"
-              label="源语言"
-              hide-details
-              density="compact"
-              variant="outlined"
-              class="language-select"
-              item-title="text"
-              item-value="value"
-              :menu-props="{ maxHeight: 300 }"
+      <SectionHeader title="语言设置" />
+      <LanguageSelector
+        v-model:sourceLanguage="sourceLanguage"
+        v-model:targetLanguage="targetLanguage"
+        :availableLanguages="availableLanguages"
               :disabled="translateStore.videoTranslate.isTranslating"
-            ></v-autocomplete>
-            <v-btn 
-              icon="mdi-swap-horizontal" 
-              variant="text" 
-              @click="swapLanguages"
-              class="swap-btn"
-              :disabled="translateStore.videoTranslate.isTranslating"
-            ></v-btn>
-            <v-autocomplete
-              v-model="translateStore.videoTranslate.targetLanguage"
-              :items="availableLanguages"
-              label="目标语言"
-              hide-details
-              density="compact"
-              variant="outlined"
-              class="language-select"
-              item-title="text"
-              item-value="value"
-              :menu-props="{ maxHeight: 300 }"
-              :disabled="translateStore.videoTranslate.isTranslating"
-            ></v-autocomplete>
-          </div>
+        @swap="swapLanguages"
+      />
         </div>
-
-        <!-- 翻译设置 -->
-        <!-- <div class="section">
-          <div class="section-title">翻译设置</div>
-          <div class="translation-settings">
-            <v-text-field
-              v-model="batchSize"
-              label="批量翻译数量"
-              type="number"
-              hide-details
-              density="compact"
-              variant="outlined"
-              class="batch-input"
-              :disabled="translateStore.videoTranslate.isTranslating"
-              :rules="[v => (v && v > 0 && v <= 30) || '批量翻译数量必须在1-30之间']"
-            ></v-text-field>
-            <div class="hint-text">建议值：10-20，最大值：30</div>
-          </div>
-        </div> -->
 
         <!-- 字幕预览 -->
         <div class="section preview-section">
@@ -125,26 +64,16 @@
         </div>
 
         <!-- 操作按钮和状态 -->
-        <div class="action-section">
-          <v-btn 
-            color="primary" 
-            size="large" 
-            class="translate-btn" 
-            @click="startTranslate"
+    <ActionSection :showStatus="!!translateStore.videoTranslate.status" :statusText="translateStore.videoTranslate.status">
+      <ActionButton 
+        label="开始翻译"
+        loadingText="翻译中..."
             :loading="translateStore.videoTranslate.isTranslating"
             :disabled="!canTranslate"
-          >
-            {{ translateStore.videoTranslate.isTranslating ? '翻译中...' : '开始翻译' }}
-          </v-btn>
-          <div class="status-section" v-if="translateStore.videoTranslate.status">
-            {{ translateStore.videoTranslate.status }}
-          </div>
-        </div>
-
-
-      </v-card-text>
-    </v-card>
-  </div>
+        @click="startTranslate"
+      />
+    </ActionSection>
+  </PageCard>
 </template>
 
 <script setup lang="ts">
@@ -152,33 +81,52 @@ import { ref, computed, onMounted } from 'vue'
 import { getUnifiedTranslateService } from '../services/TranslateService'
 import { availableLanguages, type LanguageOption } from '../constants/languages'
 import { settings } from '../services/SettingsService'
-import { useTranslateStore } from '../stores/translateStore'
+import { useTranslateStore, type SubtitleItem } from '../stores/translateStore'
+import { SubtitleTranslateHandler, saveLogAndResult } from '../services/TranslateHandlers'
+import PageCard from '../components/ui/PageCard.vue'
+import LanguageSelector from '../components/ui/LanguageSelector.vue'
+import FileSelector from '../components/ui/FileSelector.vue'
+import ActionButton from '../components/ui/ActionButton.vue'
+import ActionSection from '../components/ui/ActionSection.vue'
+import SectionHeader from '../components/ui/SectionHeader.vue'
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
 // 使用翻译状态存储
 const translateStore = useTranslateStore()
 
-// 创建一个带超时的Promise
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => 
-      setTimeout(() => reject(new Error(`操作超时，超过 ${timeoutMs/1000} 秒未响应`)), timeoutMs)
-    )
-  ]);
-}
+// 创建计算属性来处理语言选择器的双向绑定
+const sourceLanguage = computed({
+  get: () => {
+    // 确保返回的是LanguageOption类型对象
+    const lang = translateStore.videoTranslate.sourceLanguage
+    // 如果是字符串，转换为LanguageOption对象
+    if (typeof lang === 'string') {
+      return { text: lang, value: lang } as LanguageOption
+    }
+    return lang as unknown as LanguageOption
+  },
+  set: (value: LanguageOption) => {
+    // 存储到store中
+    translateStore.videoTranslate.sourceLanguage = value.value
+  }
+})
 
-// 字幕项接口
-interface SubtitleItem {
-  index?: string
-  start: string
-  end: string
-  text: string
-  translation?: string
-  type: 'srt' | 'ass'
-  style?: string
-}
+const targetLanguage = computed({
+  get: () => {
+    // 确保返回的是LanguageOption类型对象
+    const lang = translateStore.videoTranslate.targetLanguage
+    // 如果是字符串，转换为LanguageOption对象
+    if (typeof lang === 'string') {
+      return { text: lang, value: lang } as LanguageOption
+    }
+    return lang as unknown as LanguageOption
+  },
+  set: (value: LanguageOption) => {
+    // 存储到store中
+    translateStore.videoTranslate.targetLanguage = value.value
+  }
+})
 
 // 基础状态
 const batchSize = ref('20')
@@ -195,39 +143,21 @@ const canTranslate = computed(() => {
 
 // 选择字幕文件
 async function selectFile() {
-  if (!ipcRenderer) return
-  
-  try {
-    const result = await ipcRenderer.invoke('open-file-dialog')
-    
-    if (result.success && result.filePath) {
-      // 清空之前的翻译结果
-      translateStore.clearSubtitles()
-      translateStore.setSubtitleFile(result.filePath)
-      translateStore.videoTranslate.status = '正在读取字幕...'
-      
-      // 读取字幕文件
-      const subtitleResult = await ipcRenderer.invoke('read-subtitle-file', result.filePath)
-      
-      if (subtitleResult.success) {
-        translateStore.setSubtitles(subtitleResult.subtitles)
-        translateStore.videoTranslate.status = `已读取 ${subtitleResult.subtitles.length} 条字幕`
-      } else {
-        throw new Error(subtitleResult.error)
-      }
-    }
-  } catch (error: unknown) {
-    console.error('选择文件失败:', error)
-    translateStore.videoTranslate.status = `读取字幕失败: ${error instanceof Error ? error.message : String(error)}`
-  }
+  await SubtitleTranslateHandler.selectFile(
+    ipcRenderer,
+    translateStore.clearSubtitles,
+    translateStore.setSubtitleFile,
+    (status) => translateStore.videoTranslate.status = status,
+    translateStore.setSubtitles
+  )
 }
 
 // 交换语言
 function swapLanguages() {
   // 使用store中的语言设置
-  const temp = translateStore.videoTranslate.sourceLanguage
-  translateStore.videoTranslate.sourceLanguage = translateStore.videoTranslate.targetLanguage
-  translateStore.videoTranslate.targetLanguage = temp
+  const temp = sourceLanguage.value
+  sourceLanguage.value = targetLanguage.value
+  targetLanguage.value = temp
 }
 
 // 开始翻译
@@ -261,79 +191,6 @@ async function startTranslate() {
     const maxFailedAttempts = 3 // 最大连续失败次数
     const timeout = 30000 // 30秒超时
 
-    // 清理翻译结果的函数，移除不必要的解释和原文
-    const cleanTranslation = (text: string): string => {
-      // 检查是否包含明显的解释性内容标记
-      const hasExplanation = /注[:：]|备注[:：]|思考[:：]|解释[:：]|说明[:：]|Note[:：]|原文[:：]|原句[:：]|翻译[:：]|译文[:：]|Translation[:：]/i.test(text);
-      
-      // 如果包含解释性内容，尝试提取实际翻译部分
-      if (hasExplanation) {
-        // 移除 <think> 标签及其内容
-        text = text.replace(/<think>[\s\S]*?<\/think>/g, '')
-        
-        // 处理"原文/翻译"格式
-        const originalTranslationPattern = /^.*?原文[：:](.*?)\n.*?翻译[：:](.*)/is;
-        const match = text.match(originalTranslationPattern);
-        if (match && match[2]) {
-          return match[2].trim();
-        }
-        
-        // 处理"Translation:"格式
-        const translationPattern = /^.*?Translation[：:](.*)/is;
-        const translationMatch = text.match(translationPattern);
-        if (translationMatch && translationMatch[1]) {
-          return translationMatch[1].trim();
-        }
-        
-        // 处理"翻译结果:"格式
-        const resultPattern = /^.*?翻译结果[：:](.*)/is;
-        const resultMatch = text.match(resultPattern);
-        if (resultMatch && resultMatch[1]) {
-          return resultMatch[1].trim();
-        }
-        
-        // 处理"译文:"格式
-        const translatedPattern = /^.*?译文[：:](.*)/is;
-        const translatedMatch = text.match(translatedPattern);
-        if (translatedMatch && translatedMatch[1]) {
-          return translatedMatch[1].trim();
-        }
-        
-        // 如果有注释或说明，尝试删除它们
-        text = text.replace(/^注[:：].*?\n/ig, '')
-        text = text.replace(/^备注[:：].*?\n/ig, '')
-        text = text.replace(/^说明[:：].*?\n/ig, '')
-        text = text.replace(/\n注[:：].*?$/ig, '')
-        text = text.replace(/\n备注[:：].*?$/ig, '')
-        text = text.replace(/\n说明[:：].*?$/ig, '')
-        
-        // 移除括号内的解释内容
-        text = text.replace(/\([^)]*解释[^)]*\)/g, '')
-        text = text.replace(/（[^）]*解释[^）]*）/g, '')
-        text = text.replace(/\([^)]*说明[^)]*\)/g, '')
-        text = text.replace(/（[^）]*说明[^）]*）/g, '')
-        
-        // 移除其他常见的解释性前缀
-        text = text.replace(/^(这句话的意思是|这段文字的意思是|这个句子翻译成|翻译如下[:：]?|以下是翻译[:：]?)/i, '')
-        
-        // 移除问题和疑问
-        text = text.replace(/^(这里的.*是什么意思|这个.*怎么翻译|如何理解.*)[?？]/ig, '')
-        text = text.replace(/\n(这里的.*是什么意思|这个.*怎么翻译|如何理解.*)[?？]/ig, '\n')
-        
-        // 移除"我认为"、"我的翻译"等主观表述
-        text = text.replace(/^(我认为|我的翻译是|我会将|我将会|我会把)/i, '')
-        text = text.replace(/\n(我认为|我的翻译是|我会将|我将会|我会把)/i, '\n')
-      }
-      
-      // 移除多余的空行
-      text = text.replace(/\n{3,}/g, '\n\n')
-      
-      // 移除开头和结尾的空白
-      text = text.trim()
-      
-      return text
-    }
-
     // 批量翻译
     while (remainingItems.length > 0) {
       // 动态调整批次大小，如果之前失败过，减小批次大小
@@ -353,7 +210,7 @@ async function startTranslate() {
             const singleText = currentBatch[i].text
             translateStore.videoTranslate.status = `正在翻译第 ${translatedItems.length + i + 1}/${total} 条`
             
-            const singleTranslation = await withTimeout(
+            const singleTranslation = await SubtitleTranslateHandler.withTimeout(
               translateService.translateText(
                 singleText,
                 translateStore.videoTranslate.sourceLanguage,
@@ -365,7 +222,7 @@ async function startTranslate() {
             )
             
             // 清理翻译结果
-            batchTranslations.push(cleanTranslation(singleTranslation))
+            batchTranslations.push(SubtitleTranslateHandler.cleanTranslation(singleTranslation))
           }
           
           // 保存所有翻译结果
@@ -376,7 +233,7 @@ async function startTranslate() {
           })
         } else {
           // 批量翻译
-          const translations = await withTimeout(
+          const translations = await SubtitleTranslateHandler.withTimeout(
             translateService.translateText(
               texts.join('\n'),
               translateStore.videoTranslate.sourceLanguage,
@@ -396,7 +253,7 @@ async function startTranslate() {
             // 如果数量匹配，保存所有翻译结果
             currentBatch.forEach((item, index) => {
               const translated = { ...item, type: item.type || 'srt' }
-              translated.translation = cleanTranslation(translationArray[index].trim())
+              translated.translation = SubtitleTranslateHandler.cleanTranslation(translationArray[index].trim())
               translatedItems.push(translated)
             })
           } else {
@@ -410,7 +267,7 @@ async function startTranslate() {
               const singleText = currentBatch[i].text
               translateStore.videoTranslate.status = `正在单独翻译第 ${translatedItems.length + i + 1}/${total} 条`
               
-              const singleTranslation = await withTimeout(
+              const singleTranslation = await SubtitleTranslateHandler.withTimeout(
                 translateService.translateText(
                   singleText,
                   translateStore.videoTranslate.sourceLanguage,
@@ -422,7 +279,7 @@ async function startTranslate() {
               )
               
               // 清理翻译结果
-              batchTranslations.push(cleanTranslation(singleTranslation))
+              batchTranslations.push(SubtitleTranslateHandler.cleanTranslation(singleTranslation))
             }
             
             // 保存所有翻译结果
@@ -500,7 +357,7 @@ async function startTranslate() {
       })
 
       // 保存日志
-      await ipcRenderer.invoke('save-log', logEntry)
+      await ipcRenderer?.invoke('save-log', logEntry)
 
       // 保存翻译结果
       const translateResult = {
@@ -514,7 +371,7 @@ async function startTranslate() {
         fileName: translateStore.subtitleFile,
         filePath: saveResult.outputPath
       }
-      await ipcRenderer.invoke('save-translate-result', translateResult)
+      await ipcRenderer?.invoke('save-translate-result', translateResult)
 
       translateStore.videoTranslate.status = `翻译完成！已保存字幕文件：${saveResult.outputPath}`
     } else {
@@ -533,7 +390,7 @@ async function startTranslate() {
     })
     
     // 保存错误日志
-    await ipcRenderer.invoke('save-log', logEntry)
+    await ipcRenderer?.invoke('save-log', logEntry)
 
     // 保存失败的翻译结果
     const translateResult = {
@@ -547,7 +404,7 @@ async function startTranslate() {
       fileName: translateStore.subtitleFile,
       filePath: translateStore.subtitleFile
     }
-    await ipcRenderer.invoke('save-translate-result', translateResult)
+    await ipcRenderer?.invoke('save-translate-result', translateResult)
     
     translateStore.videoTranslate.status = `翻译失败: ${errorMessage}`
   } finally {
@@ -584,73 +441,8 @@ onMounted(() => {
 </style>
 
 <style scoped>
-.v-card-text {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 24px;
-}
-
 .section {
   margin-bottom: 24px;
-}
-
-.section:last-child {
-  margin-bottom: 0;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 500;
-  margin-bottom: 16px;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-/* 文件输入区域 */
-.file-input-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.label {
-  min-width: 80px;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.file-input {
-  flex: 1;
-}
-
-.select-btn {
-  min-width: 120px;
-}
-
-/* 语言设置 */
-.source-language {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.language-select {
-  flex: 1;
-  max-width: 400px;
-}
-
-/* 翻译设置 */
-.translation-settings {
-  max-width: 400px;
-}
-
-.batch-input {
-  width: 100%;
-}
-
-.hint-text {
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  margin-top: 4px;
 }
 
 /* 预览区域 */
@@ -699,37 +491,6 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-/* 底部操作区域 */
-.action-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 20px;
-  margin-top: 24px;
-  background: rgb(var(--v-theme-surface));
-  border-radius: 8px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-}
-
-.translate-btn {
-  min-width: 200px;
-  height: 48px;
-  font-size: 16px;
-  letter-spacing: 0.5px;
-}
-
-.status-section {
-  width: 100%;
-  padding: 12px 16px;
-  border-radius: 6px;
-  background: rgba(var(--v-theme-primary), 0.08);
-  color: rgb(var(--v-theme-on-surface));
-  text-align: center;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
 /* 美化滚动条 */
 .text-input::-webkit-scrollbar {
   width: 6px;
@@ -746,9 +507,5 @@ onMounted(() => {
 
 .text-input::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--v-theme-on-surface), 0.3);
-}
-
-.swap-btn {
-  margin: 0;
 }
 </style>
