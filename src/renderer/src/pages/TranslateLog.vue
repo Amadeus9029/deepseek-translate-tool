@@ -291,11 +291,18 @@ const getTodayString = () => {
   return today.toISOString().split('T')[0]
 }
 
+// 获取当月第一天的日期字符串 YYYY-MM-DD 格式
+const getFirstDayOfMonth = () => {
+  const date = new Date()
+  date.setDate(1)
+  return date.toISOString().split('T')[0]
+}
+
 // 日期相关
 const startDateMenu = ref(false)
 const endDateMenu = ref(false)
 const dateRange = ref({
-  start: getTodayString(),
+  start: getFirstDayOfMonth(),
   end: getTodayString()
 })
 
@@ -303,7 +310,7 @@ const dateRange = ref({
 const filters = ref({
   fileName: '',
   status: [] as string[],
-  startDate: getTodayString(),
+  startDate: getFirstDayOfMonth(),
   endDate: getTodayString(),
   translateType: [] as string[],
   sortOrder: 'desc'
@@ -361,7 +368,7 @@ const updateDateRange = () => {
 
 // 清除开始日期
 const clearStartDate = () => {
-  dateRange.value.start = getTodayString()
+  dateRange.value.start = getFirstDayOfMonth()
   filters.value.startDate = ''
 }
 
@@ -529,9 +536,10 @@ const clearLogs = async () => {
 onMounted(async () => {
   // 设置初始日期范围
   const today = getTodayString()
-  dateRange.value.start = today
+  const firstDay = getFirstDayOfMonth()
+  dateRange.value.start = firstDay
   dateRange.value.end = today
-  filters.value.startDate = today
+  filters.value.startDate = firstDay
   filters.value.endDate = today
   
   // 立即加载日志
