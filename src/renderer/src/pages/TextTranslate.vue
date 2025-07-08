@@ -18,6 +18,10 @@
       :sourceDisabled="store.textTranslate.isTranslating"
       @clearSource="clearSourceText"
       @copyResult="copyResult"
+      :sourceTitle="t('textTranslate.sourceText')"
+      :targetTitle="t('textTranslate.translatedText')"
+      :sourcePlaceholder="t('textTranslate.emptySourceText')"
+      :targetPlaceholder="t('textTranslate.translatedText')"
     />
 
     <!-- 操作按钮 -->

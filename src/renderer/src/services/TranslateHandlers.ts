@@ -238,7 +238,8 @@ export class SubtitleTranslateHandler {
     clearSubtitles: () => void,
     setSubtitleFile: (path: string) => void,
     setStatus: (status: string) => void,
-    setSubtitles: (subtitles: SubtitleItem[]) => void
+    setSubtitles: (subtitles: SubtitleItem[]) => void,
+    t: (key: string, params?: any) => string
   ): Promise<void> {
     if (!ipcRenderer) return
     
@@ -249,21 +250,21 @@ export class SubtitleTranslateHandler {
         // 清空之前的翻译结果
         clearSubtitles()
         setSubtitleFile(result.filePath)
-        setStatus('正在读取字幕...')
+        setStatus(t('videoTranslate.loadingSubtitles'))
         
         // 读取字幕文件
         const subtitleResult = await ipcRenderer.invoke('read-subtitle-file', result.filePath)
         
         if (subtitleResult.success) {
           setSubtitles(subtitleResult.subtitles)
-          setStatus(`已读取 ${subtitleResult.subtitles.length} 条字幕`)
+          setStatus(t('videoTranslate.loadedSubtitles', { count: subtitleResult.subtitles.length }))
         } else {
           throw new Error(subtitleResult.error)
         }
       }
     } catch (error: unknown) {
       console.error('选择文件失败:', error)
-      setStatus(`读取字幕失败: ${error instanceof Error ? error.message : String(error)}`)
+      setStatus(t('videoTranslate.readFailed', { error: error instanceof Error ? error.message : String(error) }))
     }
   }
 
@@ -355,7 +356,8 @@ export class DocumentTranslateHandler {
    */
   static async selectFile(
     ipcRenderer: any,
-    addLog: (log: string) => void
+    addLog: (log: string) => void,
+    t: (key: string, params?: any) => string
   ): Promise<string | null> {
     if (!ipcRenderer) return null
     
@@ -367,7 +369,7 @@ export class DocumentTranslateHandler {
       })
       
       if (result.filePath) {
-        addLog(`已选择文件: ${result.filePath}`)
+        addLog(t('documentTranslate.selectedFile', { file: result.filePath }))
         return result.filePath
       }
     } catch (error) {
@@ -384,7 +386,8 @@ export class DocumentTranslateHandler {
    */
   static async selectRefFile(
     ipcRenderer: any,
-    addLog: (log: string) => void
+    addLog: (log: string) => void,
+    t: (key: string, params?: any) => string
   ): Promise<string | null> {
     if (!ipcRenderer) return null
     
@@ -396,7 +399,7 @@ export class DocumentTranslateHandler {
       })
       
       if (result.filePath) {
-        addLog(`已选择参考文件: ${result.filePath}`)
+        addLog(t('documentTranslate.selectedRefFile', { file: result.filePath }))
         return result.filePath
       }
     } catch (error) {
@@ -423,31 +426,32 @@ export class DocumentTranslateHandler {
     internalRefLang: string,
     externalRefFile: string,
     externalRefLang: string,
-    addLog: (log: string) => void
+    addLog: (log: string) => void,
+    t: (key: string, params?: any) => string
   ): boolean {
     if (!excelFile) {
-      addLog('请先选择要翻译的文件')
+      addLog(t('documentTranslate.selectFileFirst'))
       return false
     }
 
     if (selectedLanguages.length === 0) {
-      addLog('请选择至少一个目标语言')
+      addLog(t('documentTranslate.selectTargetLang'))
       return false
     }
 
     // 验证参考源设置
     if (referenceType === 'internal' && !internalRefLang) {
-      addLog('请选择内置参考源语言')
+      addLog(t('documentTranslate.selectInternalRefLang'))
       return false
     }
 
     if (referenceType === 'external') {
       if (!externalRefFile) {
-        addLog('请选择外置参考源文件')
+        addLog(t('documentTranslate.selectExternalRefFile'))
         return false
       }
       if (!externalRefLang) {
-        addLog('请选择外置参考源语言')
+        addLog(t('documentTranslate.selectExternalRefLang'))
         return false
       }
     }

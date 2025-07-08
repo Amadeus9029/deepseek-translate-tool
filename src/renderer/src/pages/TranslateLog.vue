@@ -7,7 +7,7 @@
           <v-col cols="12" sm="4">
             <v-text-field
               v-model="filters.fileName"
-              label="按文件名搜索"
+              :label="t('log.searchFileName')"
               density="compact"
               variant="outlined"
               prepend-inner-icon="mdi-magnify"
@@ -20,7 +20,7 @@
             <v-select
               v-model="filters.status"
               :items="statusOptions"
-              label="完成状态"
+              :label="t('log.status')"
               density="compact"
               variant="outlined"
               hide-details
@@ -36,7 +36,7 @@
             <v-select
               v-model="filters.translateType"
               :items="translateTypeOptions"
-              label="翻译类型"
+              :label="t('log.type')"
               density="compact"
               variant="outlined"
               hide-details
@@ -58,7 +58,7 @@
                 <template v-slot:activator="{ props }">
                   <v-text-field
                     v-model="filters.startDate"
-                    label="开始日期"
+                    :label="t('log.startDate')"
                     readonly
                     density="compact"
                     variant="outlined"
@@ -89,7 +89,7 @@
               <template v-slot:activator="{ props }">
                 <v-text-field
                   v-model="filters.endDate"
-                  label="结束日期"
+                  :label="t('log.endDate')"
                   readonly
                   density="compact"
                   variant="outlined"
@@ -133,8 +133,9 @@
           @click="refreshLogs"
           class="mr-2"
           size="small"
+          style="text-transform: capitalize;"
         >
-          刷新
+          {{ t('log.refresh') }}
         </v-btn>
         <v-btn
           variant="tonal"
@@ -142,8 +143,9 @@
           prepend-icon="mdi-delete"
           @click="clearLogs"
           size="small"
+          style="text-transform: capitalize;"
         >
-          清空
+          {{ t('log.clear') }}
         </v-btn>
       </v-toolbar>
 
@@ -151,8 +153,8 @@
       <div class="content-container">
         <div v-if="filteredLogs.length === 0" class="empty-state">
           <v-icon size="64" color="grey" class="mb-4">mdi-text-box-outline</v-icon>
-          <div class="text-h6 text-grey">暂无日志记录</div>
-          <div class="text-body-2 text-grey mt-2">尝试调整过滤条件或清除筛选</div>
+          <div class="text-h6 text-grey">{{ t('log.empty') }}</div>
+          <div class="text-body-2 text-grey mt-2">{{ t('log.emptyTip') }}</div>
         </div>
         <div v-else class="log-list">
           <v-slide-y-transition group>
@@ -170,21 +172,21 @@
                   <v-chip
                     :color="getStatusColor(log)"
                     size="small"
-                      class="mr-2"
+                    class="mr-2"
                     label
                   >
-                    {{ log.completed ? '已完成' : '未完成' }}
+                    {{ log.completed ? t('log.completed') : t('log.uncompleted') }}
                   </v-chip>
-                    <v-chip
-                      color="primary"
-                      size="small"
-                      class="mr-3"
-                      variant="outlined"
-                      label
-                    >
-                      {{ getTranslateTypeName(log.translateType) }}
-                    </v-chip>
-                    <span class="text-subtitle-1 font-weight-medium text-truncate">{{ log.fileName }}</span>
+                  <v-chip
+                    color="primary"
+                    size="small"
+                    class="mr-3"
+                    variant="outlined"
+                    label
+                  >
+                    {{ getTranslateTypeName(log.translateType) }}
+                  </v-chip>
+                  <span class="text-subtitle-1 font-weight-medium text-truncate">{{ log.fileName }}</span>
                 </div>
                 <span class="text-caption text-grey">{{ formatDate(log.startTime) }}</span>
               </div>
@@ -192,34 +194,34 @@
               <v-divider class="mb-4"></v-divider>
 
               <div class="log-details">
-                  <div class="detail-grid">
-                    <div class="detail-item">
-                  <v-icon size="20" color="primary" class="mr-2">mdi-file-document</v-icon>
-                      <span class="text-body-2">文件：<span class="text-medium">{{ log.fileName }}</span></span>
-                    </div>
-                    <div class="detail-item">
-                  <v-icon size="20" color="primary" class="mr-2">mdi-translate</v-icon>
-                      <span class="text-body-2">语言：<span class="text-medium">{{ log.sourceLanguage }} → {{ log.targetLanguage }}</span></span>
-                    </div>
-                    <div class="detail-item">
-                  <v-icon size="20" color="primary" class="mr-2">mdi-counter</v-icon>
-                      <span class="text-body-2">翻译数量：<span class="text-medium">{{ log.translateCount }}</span></span>
-                    </div>
-                    <div class="detail-item">
-                  <v-icon size="20" color="primary" class="mr-2">mdi-clock-start</v-icon>
-                      <span class="text-body-2">开始时间：<span class="text-medium">{{ formatDate(log.startTime) }}</span></span>
-                    </div>
-                    <div class="detail-item" v-if="log.endTime">
-                  <v-icon size="20" color="primary" class="mr-2">mdi-clock-end</v-icon>
-                      <span class="text-body-2">结束时间：<span class="text-medium">{{ formatDate(log.endTime) }}</span></span>
-                    </div>
-                    <div class="detail-item" v-if="log.duration">
-                  <v-icon size="20" color="primary" class="mr-2">mdi-timer</v-icon>
-                      <span class="text-body-2">总用时：<span class="text-medium">{{ formatDuration(log.duration) }}</span></span>
-                    </div>
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <v-icon size="20" color="primary" class="mr-2">mdi-file-document</v-icon>
+                    <span class="text-body-2">{{ t('log.file') }}：<span class="text-medium">{{ log.fileName }}</span></span>
+                  </div>
+                  <div class="detail-item">
+                    <v-icon size="20" color="primary" class="mr-2">mdi-translate</v-icon>
+                    <span class="text-body-2">{{ t('log.language') }}：<span class="text-medium">{{ log.sourceLanguage }} → {{ log.targetLanguage }}</span></span>
+                  </div>
+                  <div class="detail-item">
+                    <v-icon size="20" color="primary" class="mr-2">mdi-counter</v-icon>
+                    <span class="text-body-2">{{ t('log.count') }}：<span class="text-medium">{{ log.translateCount }}</span></span>
+                  </div>
+                  <div class="detail-item">
+                    <v-icon size="20" color="primary" class="mr-2">mdi-clock-start</v-icon>
+                    <span class="text-body-2">{{ t('log.startTime') }}：<span class="text-medium">{{ formatDate(log.startTime) }}</span></span>
+                  </div>
+                  <div class="detail-item" v-if="log.endTime">
+                    <v-icon size="20" color="primary" class="mr-2">mdi-clock-end</v-icon>
+                    <span class="text-body-2">{{ t('log.endTime') }}：<span class="text-medium">{{ formatDate(log.endTime) }}</span></span>
+                  </div>
+                  <div class="detail-item" v-if="log.duration">
+                    <v-icon size="20" color="primary" class="mr-2">mdi-timer</v-icon>
+                    <span class="text-body-2">{{ t('log.duration') }}：<span class="text-medium">{{ formatDuration(log.duration) }}</span></span>
+                  </div>
                 </div>
                 <div v-if="log.error" class="error-message mt-3">
-                    <pre class="error-text">{{ log.error }}</pre>
+                  <pre class="error-text">{{ log.error }}</pre>
                 </div>
               </div>
             </v-card-item>
@@ -231,7 +233,7 @@
       <!-- 分页控件 -->
       <div class="pagination d-flex align-center justify-space-between">
         <div class="text-caption text-grey d-flex align-center">
-          <span>第 {{ startItem }}-{{ endItem }} 条，共 {{ filteredLogs.length }} 条</span>
+          <span>{{ t('log.pageStats', { start: startItem, end: endItem, total: filteredLogs.length }) }}</span>
         </div>
         <div class="d-flex align-center gap-4">
           <v-select
@@ -239,7 +241,7 @@
             :items="pageSizeOptions"
             item-title="title"
             item-value="value"
-            label="每页显示"
+            :label="t('log.perPage', { count: pageSize })"
             density="compact"
             variant="outlined"
             hide-details
@@ -268,6 +270,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import PageCard from '../components/ui/PageCard.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 interface LogEntry {
   fileName: string
@@ -317,25 +322,25 @@ const filters = ref({
 })
 
 const statusOptions = [
-  { title: '已完成', value: 'completed' },
-  { title: '未完成', value: 'uncompleted' },
-  { title: '出错', value: 'error' }
+  { title: t('log.completed'), value: 'completed' },
+  { title: t('log.uncompleted'), value: 'uncompleted' },
+  { title: t('log.error'), value: 'error' }
 ]
 
 const translateTypeOptions = [
-  { title: '文本翻译', value: 'text' },
-  { title: '文档翻译', value: 'document' },
-  { title: '字幕翻译', value: 'subtitle' }
+  { title: t('log.text'), value: 'text' },
+  { title: t('log.document'), value: 'document' },
+  { title: t('log.subtitle'), value: 'subtitle' }
 ]
 
 // 分页相关
 const currentPage = ref(1)
 const pageSize = ref(10)
 const pageSizeOptions = [
-  { title: '10条/页', value: 10 },
-  { title: '20条/页', value: 20 },
-  { title: '50条/页', value: 50 },
-  { title: '100条/页', value: 100 }
+  { title: t('log.perPage', { count: 10 }), value: 10 },
+  { title: t('log.perPage', { count: 20 }), value: 20 },
+  { title: t('log.perPage', { count: 50 }), value: 50 },
+  { title: t('log.perPage', { count: 100 }), value: 100 }
 ]
 
 // 计算当前页的起始和结束项
@@ -382,7 +387,7 @@ const clearEndDate = () => {
 const getTranslateTypeName = (type: string) => {
   const option = translateTypeOptions.find(opt => opt.value === type)
   if (!option || type === 'unknown') {
-    return '未知类型'
+    return t('log.unknownType')
   }
   return option.title
 }
@@ -518,16 +523,17 @@ const refreshLogs = async () => {
 // 清空日志
 const clearLogs = async () => {
   if (!ipcRenderer) return
-  if (confirm('确定要清空所有日志吗？')) {
+  if (confirm(t('log.clearConfirm'))) {
     try {
       const result = await ipcRenderer.invoke('clear-logs')
       if (result.success) {
         logs.value = []
+        // 可选：alert(t('log.clearSuccess'))
       } else {
-        console.error('清空日志失败:', result.error)
+        console.error(t('log.clearFailed', { error: result.error }))
       }
     } catch (error) {
-      console.error('清空日志失败:', error)
+      console.error(t('log.clearFailed', { error }))
     }
   }
 }
@@ -661,5 +667,10 @@ onMounted(async () => {
   .page-size-select {
     width: 100px;
   }
+}
+
+.pagination .v-btn,
+.v-toolbar .v-btn {
+  text-transform: capitalize !important;
 }
 </style> 

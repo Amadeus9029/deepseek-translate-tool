@@ -2,25 +2,25 @@
   <PageCard>
     <!-- 文件设置 -->
     <div class="section">
-      <SectionHeader title="文件设置" />
+      <SectionHeader :title="t('documentTranslate.fileSettings')" />
       <FileSelector
         :filePath="store.documentTranslate.excelFile"
-        label="Excel文件"
-        placeholder="请选择Excel文件"
+        :label="t('documentTranslate.excelFile')"
+        :placeholder="t('documentTranslate.selectExcelFile')"
         :disabled="store.documentTranslate.isTranslating"
-        buttonText="选择文件"
+        :buttonText="t('documentTranslate.selectFile')"
         @select="selectFile"
       />
     </div>
 
     <!-- 翻译参考设置 -->
     <div class="section">
-      <SectionHeader title="翻译参考设置" />
+      <SectionHeader :title="t('documentTranslate.referenceSettings')" />
       <div class="reference-options">
         <v-radio-group v-model="store.documentTranslate.referenceType" inline hide-details>
-          <v-radio label="不使用参考源" value="none"></v-radio>
-          <v-radio label="使用内置参考源" value="internal"></v-radio>
-          <v-radio label="使用外置参考源" value="external"></v-radio>
+          <v-radio :label="t('documentTranslate.noReference')" value="none"></v-radio>
+          <v-radio :label="t('documentTranslate.internalReference')" value="internal"></v-radio>
+          <v-radio :label="t('documentTranslate.externalReference')" value="external"></v-radio>
         </v-radio-group>
 
         <!-- 内置参考源设置 -->
@@ -28,7 +28,7 @@
           <v-select
             v-model="store.documentTranslate.internalRefLang"
             :items="availableLanguages"
-            label="选择参考语言列"
+            :label="t('documentTranslate.selectRefLanguage')"
             hide-details
             density="compact"
             variant="outlined"
@@ -41,16 +41,16 @@
           <div class="mb-2">
             <FileSelector
               :filePath="store.documentTranslate.externalRefFile"
-              placeholder="请选择参考Excel文件"
+              :placeholder="t('documentTranslate.selectRefFile')"
               :disabled="store.documentTranslate.isTranslating"
-              buttonText="选择文件"
+              :buttonText="t('documentTranslate.selectFile')"
               @select="selectRefFile"
             />
           </div>
           <v-select
             v-model="store.documentTranslate.externalRefLang"
             :items="availableLanguages"
-            label="选择参考语言列"
+            :label="t('documentTranslate.selectRefLanguage')"
             hide-details
             density="compact"
             variant="outlined"
@@ -62,10 +62,10 @@
 
     <!-- 语言设置 -->
     <div class="section">
-      <SectionHeader title="语言设置" />
+      <SectionHeader :title="t('documentTranslate.languageSettings')" />
       <div class="language-settings">
         <div class="source-language">
-          <div class="label">源语言:</div>
+          <div class="label">{{ t('documentTranslate.sourceLanguage') }}</div>
           <v-autocomplete
             v-model="store.documentTranslate.sourceLanguage"
             :items="availableLanguages"
@@ -97,8 +97,8 @@
     <!-- 开始翻译按钮 -->
     <ActionSection>
       <ActionButton
-        label="开始翻译"
-        loadingText="翻译中..."
+        :label="t('documentTranslate.startTranslate')"
+        :loadingText="t('documentTranslate.translating')"
         :loading="store.documentTranslate.isTranslating"
         :disabled="store.documentTranslate.isTranslating"
         @click="startTranslate"
@@ -108,8 +108,8 @@
     <!-- 运行日志 -->
     <LogDisplay
       :logs="store.documentTranslate.logs"
-      title="运行日志"
-      emptyText="暂无日志信息"
+      :title="t('documentTranslate.runningLogs')"
+      :emptyText="t('documentTranslate.noLogs')"
     />
   </PageCard>
 </template>
@@ -126,9 +126,11 @@ import SectionHeader from '../components/ui/SectionHeader.vue'
 import ActionButton from '../components/ui/ActionButton.vue'
 import ActionSection from '../components/ui/ActionSection.vue'
 import LogDisplay from '../components/ui/LogDisplay.vue'
+import { useI18n } from 'vue-i18n'
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 const store = useTranslateStore()
+const { t } = useI18n()
 
 // 组件挂载时初始化状态
 onMounted(() => {
@@ -192,9 +194,9 @@ async function startTranslate() {
   try {
     store.documentTranslate.isTranslating = true
     store.documentTranslate.logs = [
-      `开始翻译：${store.documentTranslate.excelFile}`,
-      `源语言：${store.documentTranslate.sourceLanguage?.text || ''}`,
-      `目标语言：${store.documentTranslate.selectedLanguages.join(', ')}`
+      t('documentTranslate.logStart', { file: store.documentTranslate.excelFile }),
+      t('documentTranslate.logSourceLang', { lang: store.documentTranslate.sourceLanguage?.text || '' }),
+      t('documentTranslate.logTargetLang', { lang: store.documentTranslate.selectedLanguages.join(', ') })
     ]
 
     // 读取主Excel文件
@@ -266,7 +268,7 @@ async function startTranslate() {
               targetLang,
               [], // 这里可以添加术语表支持
               (current, total) => {
-                store.addDocumentLog(`正在翻译第 ${processedCount + 1} 行的 ${targetLang} 翻译，进度：${current}/${total}`)
+                store.addDocumentLog(t('documentTranslate.logTranslating', { row: processedCount + 1, lang: targetLang, current, total }))
               }
             )
 
@@ -281,7 +283,7 @@ async function startTranslate() {
 
       translatedData.push(translatedRow)
       processedCount++
-      store.addDocumentLog(`完成第 ${processedCount}/${data.length} 行的所有语言翻译`)
+      store.addDocumentLog(t('documentTranslate.logRowDone', { row: processedCount, total: data.length }))
     }
 
     // 生成输出文件夹路径
@@ -330,8 +332,8 @@ async function startTranslate() {
     }
     await ipcRenderer.invoke('save-translate-result', translateResult)
 
-    store.addDocumentLog(`已保存所有翻译结果到: ${saveResult.outputPath}`)
-    store.addDocumentLog('翻译任务已完成！')
+    store.addDocumentLog(t('documentTranslate.logSaved', { path: saveResult.outputPath }))
+    store.addDocumentLog(t('documentTranslate.logAllDone'))
   } catch (err: unknown) {
     console.error('翻译过程出错:', err)
     const errorMessage = err instanceof Error ? err.message : '未知错误'
@@ -361,7 +363,7 @@ async function startTranslate() {
     }
     await ipcRenderer.invoke('save-translate-result', translateResult)
     
-    store.addDocumentLog(`翻译出错: ${errorMessage}`)
+    store.addDocumentLog(t('documentTranslate.logError', { error: errorMessage }))
   } finally {
     store.documentTranslate.isTranslating = false
   }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch, onMounted, nextTick, ref } from 'vue'
 
 const props = defineProps({
   selectedMenu: {
@@ -7,24 +7,63 @@ const props = defineProps({
     required: true
   },
   componentKey: {
-    type: Number,
+    type: String,
     required: true
   },
   currentComponent: {
     type: Object,
     required: true
+  },
+  menuItems: {
+    type: Array as () => any[],
+    required: false
   }
+})
+
+const displayTitle = computed(() => {
+  if (props.menuItems) {
+    const item = (props.menuItems as any[]).find((item: any) => item.key === props.selectedMenu)
+    return item ? item.title : props.selectedMenu
+  }
+  return props.selectedMenu
+})
+
+const mainContentWrapperRef = ref<HTMLElement | null>(null)
+let lastScrollTop = 0
+
+// 记录滚动条位置
+function saveScroll() {
+  if (mainContentWrapperRef.value) {
+    lastScrollTop = mainContentWrapperRef.value.scrollTop
+  }
+}
+
+// 恢复滚动条位置
+function restoreScroll() {
+  if (mainContentWrapperRef.value) {
+    mainContentWrapperRef.value.scrollTop = lastScrollTop
+  }
+}
+
+// 监听componentKey变化（如语言切换），恢复滚动条
+watch(() => props.componentKey, async () => {
+  await nextTick()
+  restoreScroll()
+})
+
+onMounted(() => {
+  restoreScroll()
 })
 </script>
 
 <template>
   <div class="main-bg">
     <div class="main-header">
-      <span class="main-title">{{ selectedMenu }}</span>
+      <span class="main-title">{{ displayTitle }}</span>
     </div>
     <v-main data-v-7a7a37b1 class="v-main no-scrollbar"
       style="--v-layout-left: 210px; --v-layout-right: 0px; --v-layout-top: 0px; --v-layout-bottom: 0px;">
-      <div class="main-content-wrapper">
+      <div class="main-content-wrapper" ref="mainContentWrapperRef" @scroll="saveScroll">
         <keep-alive>
           <component :is="currentComponent" :key="componentKey" />
         </keep-alive>

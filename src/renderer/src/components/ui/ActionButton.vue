@@ -54,5 +54,6 @@ const handleClick = () => {
 <style scoped>
 .action-btn {
   min-width: 160px;
+  text-transform: capitalize;
 }
 </style> 
