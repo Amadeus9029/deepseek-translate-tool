@@ -171,7 +171,8 @@ export default {
     subtitleBatchSizeRule: 'Batch translation count must be between 1 and 30',
     langChinese: 'Chinese',
     langEnglish: 'English',
-    userSavedModel: 'User saved model'
+    userSavedModel: 'User saved model',
+    testingModel: 'Connection successful, testing if model {model} is available...'
   },
   about: {
     title: 'About',

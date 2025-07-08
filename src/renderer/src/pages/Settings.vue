@@ -102,7 +102,7 @@ const testOllamaConnection = async () => {
         }
         
         // 真正测试模型是否可用：向模型发送一个简单的测试消息
-        connectionTestResult.value = `连接成功，正在测试模型 ${testModelName} 是否可用...`;
+        connectionTestResult.value = t('settings.testingModel', { model: testModelName });
         
         try {
           // 使用generate API测试模型是否真正可用

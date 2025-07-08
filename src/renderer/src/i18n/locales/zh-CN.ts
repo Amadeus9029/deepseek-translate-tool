@@ -171,7 +171,8 @@ export default {
     subtitleBatchSizeRule: '批量翻译数量必须在1-30之间',
     langChinese: '中文',
     langEnglish: 'English',
-    userSavedModel: '用户保存的模型'
+    userSavedModel: '用户保存的模型',
+    testingModel: '连接成功，正在测试模型 {model} 是否可用...'
   },
   about: {
     title: '关于',
