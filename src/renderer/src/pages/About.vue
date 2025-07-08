@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const version = ref('1.0.0')
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
+const { t } = useI18n()
 
 onMounted(async () => {
   if (ipcRenderer) {
@@ -18,36 +20,36 @@ onMounted(async () => {
       <div class="about-scroll-container">
         <div class="about-header">
           <v-icon size="64" color="primary" class="mb-4">mdi-translate</v-icon>
-          <h1 class="text-h4 mb-2">智能翻译工具</h1>
-          <div class="text-subtitle-1 text-medium-emphasis">版本 {{ version }}</div>
+          <h1 class="text-h4 mb-2">{{ t('about.appName') }}</h1>
+          <div class="text-subtitle-1 text-medium-emphasis">{{ t('about.version') }} {{ version }}</div>
         </div>
         
         <v-divider class="my-4"></v-divider>
         
         <div class="about-content">
           <div class="feature-section">
-            <h2 class="text-h6 mb-3">主要功能</h2>
+            <h2 class="text-h6 mb-3">{{ t('about.features') }}</h2>
             <v-list>
-              <v-list-item prepend-icon="mdi-translate" title="文本翻译" subtitle="支持多语言之间的即时翻译"></v-list-item>
-              <v-list-item prepend-icon="mdi-file-document" title="文档翻译" subtitle="支持多种格式文档的批量翻译"></v-list-item>
-              <v-list-item prepend-icon="mdi-video" title="字幕翻译" subtitle="支持视频字幕的智能翻译"></v-list-item>
+              <v-list-item prepend-icon="mdi-translate" :title="t('about.textTranslate')" :subtitle="t('about.textTranslateDesc')"></v-list-item>
+              <v-list-item prepend-icon="mdi-file-document" :title="t('about.documentTranslate')" :subtitle="t('about.documentTranslateDesc')"></v-list-item>
+              <v-list-item prepend-icon="mdi-video" :title="t('about.subtitleTranslate')" :subtitle="t('about.subtitleTranslateDesc')"></v-list-item>
             </v-list>
           </div>
           
           <v-divider class="my-4"></v-divider>
           
           <div class="contact-section">
-            <h2 class="text-h6 mb-3">联系与支持</h2>
+            <h2 class="text-h6 mb-3">{{ t('about.contact') }}</h2>
             <v-list>
-              <v-list-item prepend-icon="mdi-email" title="反馈邮箱" subtitle="965720890@qq.com"></v-list-item>
-              <v-list-item prepend-icon="mdi-github" title="开源地址" subtitle="https://github.com/Amadeus9029/Deepseek-Translate-Tool"></v-list-item>
+              <v-list-item prepend-icon="mdi-email" :title="t('about.feedbackEmail')" subtitle="965720890@qq.com"></v-list-item>
+              <v-list-item prepend-icon="mdi-github" :title="t('about.github')" subtitle="https://github.com/Amadeus9029/Deepseek-Translate-Tool"></v-list-item>
             </v-list>
           </div>
           
           <v-divider class="my-4"></v-divider>
           
           <div class="copyright-section text-center">
-            <p class="text-medium-emphasis">© {{ new Date().getFullYear() }} Deepseek Translate Tool. All rights reserved.</p>
+            <p class="text-medium-emphasis">© {{ new Date().getFullYear() }} {{ t('about.appName') }}. {{ t('about.allRightsReserved') }}</p>
           </div>
         </div>
       </div>

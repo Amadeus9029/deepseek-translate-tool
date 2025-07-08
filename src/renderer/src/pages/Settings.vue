@@ -49,8 +49,8 @@ const isLoadingModelParams = ref(false) // 是否正在加载模型参数
 
 // 可用的模型列表
 const availableModels = [
-  { title: 'DeepSeek Chat', value: 'deepseek-chat' },
-  { title: 'DeepSeek Reasoner', value: 'deepseek-reasoner' }
+  { title: t('settings.deepseekChat'), value: 'deepseek-chat' },
+  { title: t('settings.deepseekReasoner'), value: 'deepseek-reasoner' }
 ]
 
 // Ollama 相关方法
@@ -67,7 +67,7 @@ const testOllamaConnection = async () => {
     });
     
     if (!result.success) {
-      connectionTestResult.value = `<span class="text-error">连接失败：${result.error}</span>`;
+      connectionTestResult.value = `<span class="text-error">${t('errors.connectionFailed', { error: result.error })}</span>`;
       return;
     }
     
@@ -122,7 +122,7 @@ const testOllamaConnection = async () => {
           
           if (generateResult.success && generateResult.data && generateResult.data.response) {
             // 模型成功响应
-            connectionTestResult.value = `<span class="text-success">连接成功！模型 ${testModelName} 可用。</span>`;
+            connectionTestResult.value = `<span class="text-success">${t('settings.connectionSuccess')}</span>`;
             logger.info('模型测试响应:', generateResult.data.response);
           } else {
             // 模型无法生成响应
@@ -145,7 +145,7 @@ const testOllamaConnection = async () => {
         // 模型未安装，提示用户
         // 使用基础模型名称（不包含参数）
         const baseModelName = modelName.split(':')[0];
-        connectionTestResult.value = `<span class="text-error">连接成功，但模型 ${baseModelName} 未安装。请先使用命令 'ollama pull ${baseModelName}' 安装模型。</span>`;
+        connectionTestResult.value = `<span class="text-error">${t('errors.connectionSuccessModelNotInstalled', { baseModelName })}</span>`;
       }
     } else {
       // 没有选择模型，只显示连接成功
@@ -154,9 +154,9 @@ const testOllamaConnection = async () => {
     
     // 不再将本地已安装的模型添加到模型列表中
     // 仅显示连接成功信息
-    logger.info(`Ollama连接测试成功，检测到 ${result.data.models?.length || 0} 个本地已安装模型`);
+    logger.info(t('settings.ollamaConnectionSuccess', { count: result.data.models?.length || 0 }));
   } catch (error) {
-    connectionTestResult.value = `连接失败：${error}`
+    connectionTestResult.value = `${t('errors.connectionFailed', { error })}`
   } finally {
     isTestingConnection.value = false
   }
@@ -207,7 +207,7 @@ const fetchOfficialModels = async () => {
       // 只在刷新按钮点击后显示成功提示
       if (showSnackbar.value) {
         snackbarColor.value = 'success';
-        snackbarText.value = `成功加载 ${modelList.length} 个远程模型`;
+        snackbarText.value = `${t('settings.successLoadRemoteModels', { count: modelList.length })}`;
       }
       
       return true;
@@ -264,7 +264,7 @@ const fetchOfficialModelsFromAPI = async () => {
       // 显示成功提示
       if (showSnackbar.value) {
         snackbarColor.value = 'success';
-        snackbarText.value = `成功加载 ${modelList.length} 个模型`;
+        snackbarText.value = `${t('settings.successLoadModels', { count: modelList.length })}`;
         showSnackbar.value = true;
       }
       
@@ -275,7 +275,7 @@ const fetchOfficialModelsFromAPI = async () => {
       // 显示失败提示
       if (showSnackbar.value) {
         snackbarColor.value = 'error';
-        snackbarText.value = '模型加载失败';
+        snackbarText.value = `${t('settings.modelLoadFailed')}`;
         showSnackbar.value = true;
       }
       
@@ -287,7 +287,7 @@ const fetchOfficialModelsFromAPI = async () => {
     // 显示失败提示
     if (showSnackbar.value) {
       snackbarColor.value = 'error';
-      snackbarText.value = '模型加载失败';
+      snackbarText.value = `${t('settings.modelLoadFailed')}`;
       showSnackbar.value = true;
     }
     
@@ -450,11 +450,8 @@ const saveSettings = async () => {
     if (!result?.success) {
       snackbarColor.value = 'error'
       snackbarText.value = t('settings.settingsSaveFailed', { error: result?.error })
-    } else {
-      snackbarColor.value = 'success'
-      snackbarText.value = t('settings.settingsSaved')
+      showSnackbar.value = true
     }
-    showSnackbar.value = true
   } catch (error) {
     snackbarColor.value = 'error'
     snackbarText.value = t('settings.settingsSaveFailed', { error })
@@ -665,7 +662,7 @@ const loadModelParams = async (modelName: string): Promise<void> => {
         updateFullModelName();
       } else {
         snackbarColor.value = 'warning';
-        snackbarText.value = '获取模型参数失败，请手动选择';
+        snackbarText.value = `${t('errors.modelParamsLoadFailed')}`;
         showSnackbar.value = true;
       }
     }
@@ -760,7 +757,7 @@ const refreshModelList = async () => {
   } catch (error) {
     logger.error('刷新模型列表失败:', error);
     snackbarColor.value = 'error';
-    snackbarText.value = '刷新模型列表失败';
+    snackbarText.value = `${t('errors.refreshModelListFailed')}`;
     showSnackbar.value = true;
   }
 }
@@ -806,6 +803,13 @@ const ensureUserModelDisplayed = () => {
     }
   }
 }
+
+// 监听设置项变化，实时保存
+watch([
+  apiKey, savePath, themeMode, language, model, subtitleBatchSize, useOllama, ollamaUrl, ollamaModel, concurrentThreads, batchSize, maxRetries, saveInterval, progressInterval
+], () => {
+  saveSettings()
+})
 </script>
 
 <template>
@@ -866,7 +870,7 @@ const ensureUserModelDisplayed = () => {
         <v-text-field
           v-model="ollamaUrl"
           :label="t('settings.ollamaUrl')"
-          hint="http://localhost:11434"
+          :hint="t('settings.ollamaUrlHint')"
           persistent-hint
         ></v-text-field>
       </v-col>
@@ -876,6 +880,7 @@ const ensureUserModelDisplayed = () => {
           variant="outlined"
           :loading="isTestingConnection"
           @click="testOllamaConnection"
+          style="text-transform: capitalize;"
         >
           {{ t('settings.testConnection') }}
         </v-btn>
@@ -888,7 +893,7 @@ const ensureUserModelDisplayed = () => {
             v-model="selectedModelBase"
             :items="availableOllamaModels"
             :label="t('settings.selectModelName')"
-            hint="先选择模型名称"
+            :hint="t('settings.selectModelNameHint')"
             persistent-hint
             :loading="isTestingConnection || isLoadingOfficialModels"
             item-title="title"
@@ -903,7 +908,7 @@ const ensureUserModelDisplayed = () => {
             v-model="selectedModelParam"
             :items="availableModelParams"
             :label="t('settings.selectModelParam')"
-            hint="再选择参数大小"
+            :hint="t('settings.selectModelParamHint')"
             persistent-hint
             :loading="isLoadingModelParams"
             :disabled="availableModelParams.length === 0"
@@ -933,11 +938,11 @@ const ensureUserModelDisplayed = () => {
         </div>
         <div class="text-caption text-grey mt-1">
           <strong>{{ t('settings.modelDescription') }}</strong><br>
-          • Q4版本：内存占用最少，适合低配置设备<br>
-          • Q8版本：平衡性能和内存占用<br>
-          • FP16版本：最高精度，需要更多内存<br>
-          • 数字越大模型越强，但需要更多计算资源<br>
-          • 本地已安装的模型会显示在列表最前面
+          • {{ t('settings.modelQ4') }}<br>
+          • {{ t('settings.modelQ8') }}<br>
+          • {{ t('settings.modelFP16') }}<br>
+          • {{ t('settings.modelStronger') }}<br>
+          • {{ t('settings.modelLocalFirst') }}
         </div>
       </v-col>
     </v-row>
@@ -993,7 +998,7 @@ const ensureUserModelDisplayed = () => {
           v-model="concurrentThreads"
           :label="t('settings.concurrentThreads')"
           type="number"
-          hint="建议：1-10，默认：5"
+          :hint="t('settings.concurrentThreadsHint')"
           persistent-hint
         ></v-text-field>
       </v-col>
@@ -1002,7 +1007,7 @@ const ensureUserModelDisplayed = () => {
           v-model="batchSize"
           :label="t('settings.batchSize')"
           type="number"
-          hint="建议：5-20，默认：10"
+          :hint="t('settings.batchSizeHint')"
           persistent-hint
         ></v-text-field>
       </v-col>
@@ -1011,7 +1016,7 @@ const ensureUserModelDisplayed = () => {
           v-model="maxRetries"
           :label="t('settings.maxRetries')"
           type="number"
-          hint="建议：1-5，默认：3"
+          :hint="t('settings.maxRetriesHint')"
           persistent-hint
         ></v-text-field>
       </v-col>
@@ -1020,7 +1025,7 @@ const ensureUserModelDisplayed = () => {
           v-model="saveInterval"
           :label="t('settings.saveInterval')"
           type="number"
-          hint="每处理多少单元保存一次，默认：100"
+          :hint="t('settings.saveIntervalHint')"
           persistent-hint
         ></v-text-field>
       </v-col>
@@ -1029,7 +1034,7 @@ const ensureUserModelDisplayed = () => {
           v-model="progressInterval"
           :label="t('settings.progressInterval')"
           type="number"
-          hint="每处理多少单元刷新一次进度，默认：10"
+          :hint="t('settings.progressIntervalHint')"
           persistent-hint
         ></v-text-field>
       </v-col>
@@ -1043,16 +1048,16 @@ const ensureUserModelDisplayed = () => {
           v-model="subtitleBatchSize"
           :label="t('settings.subtitleBatchSize')"
           type="number"
-          hint="建议：10-20，最大值：30"
+          :hint="t('settings.subtitleBatchSizeHint')"
           persistent-hint
-          :rules="[v => (v && Number(v) > 0 && Number(v) <= 30) || '批量翻译数量必须在1-30之间']"
+          :rules="[v => (v && Number(v) > 0 && Number(v) <= 30) || t('settings.subtitleBatchSizeRule')]"
         ></v-text-field>
       </v-col>
     </v-row>
 
     <v-row class="mt-6">
       <v-col cols="12" class="text-right">
-        <v-btn color="primary" @click="saveSettings">{{ t('settings.saveSettings') }}</v-btn>
+        <!-- 实时保存，无需按钮 -->
       </v-col>
     </v-row>
 
@@ -1092,5 +1097,10 @@ const ensureUserModelDisplayed = () => {
   font-weight: bold;
   margin-bottom: 16px;
   color: rgb(var(--v-theme-on-surface));
+}
+
+/* 统一设置页所有按钮英文首字母大写 */
+.v-btn {
+  text-transform: capitalize !important;
 }
 </style> 

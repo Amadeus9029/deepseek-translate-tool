@@ -2,12 +2,12 @@
   <PageCard>
         <!-- 文件设置 -->
         <div class="section">
-      <SectionHeader title="字幕文件" />
+      <SectionHeader :title="t('videoTranslate.subtitleFile')" />
       <FileSelector
         :filePath="translateStore.subtitleFile"
-        label="字幕文件"
-              placeholder="请选择字幕文件"
-        buttonText="选择文件"
+        :label="t('videoTranslate.subtitleFile')"
+              :placeholder="t('videoTranslate.selectSubtitleFile')"
+        :buttonText="t('videoTranslate.selectFile')"
               :disabled="translateStore.videoTranslate.isTranslating"
         @select="selectFile"
       />
@@ -15,7 +15,7 @@
 
         <!-- 语言设置 -->
         <div class="section">
-      <SectionHeader title="语言设置" />
+      <SectionHeader :title="t('videoTranslate.languageSettings')" />
       <LanguageSelector
         v-model:sourceLanguage="sourceLanguage"
         v-model:targetLanguage="targetLanguage"
@@ -29,22 +29,22 @@
         <div class="section preview-section">
           <div class="preview-header">
             <div class="preview-title">
-              <span>原文字幕</span>
+              <span>{{ t('videoTranslate.sourceSubtitles') }}</span>
               <div class="subtitle-info" v-if="translateStore.subtitles.length > 0">
-                共 {{ translateStore.subtitles.length }} 条字幕
+                {{ t('videoTranslate.subtitleCount', { count: translateStore.subtitles.length }) }}
               </div>
             </div>
             <div class="preview-title">
-              <span>翻译字幕</span>
+              <span>{{ t('videoTranslate.translatedSubtitles') }}</span>
               <div class="subtitle-info" v-if="translateStore.translatedItems.length > 0">
-                已翻译 {{ translateStore.translatedItems.length }}/{{ translateStore.subtitles.length }} 条
+                {{ t('videoTranslate.translatedCount', { translated: translateStore.translatedItems.length, total: translateStore.subtitles.length }) }}
               </div>
             </div>
           </div>
           <div class="preview-content">
             <v-textarea
               v-model="translateStore.sourceSubtitles"
-              placeholder="原文字幕将显示在这里"
+              :placeholder="t('videoTranslate.sourcePlaceholder')"
               hide-details
               variant="outlined"
               class="text-input"
@@ -53,7 +53,7 @@
             ></v-textarea>
             <v-textarea
               v-model="translateStore.translatedSubtitles"
-              placeholder="翻译结果将显示在这里"
+              :placeholder="t('videoTranslate.translatedPlaceholder')"
               hide-details
               variant="outlined"
               class="text-input"
@@ -64,10 +64,10 @@
         </div>
 
         <!-- 操作按钮和状态 -->
-    <ActionSection :showStatus="!!translateStore.videoTranslate.status" :statusText="translateStore.videoTranslate.status">
+    <ActionSection :showStatus="!!translateStore.videoTranslate.status" :statusText="t(translateStore.videoTranslate.status)">
       <ActionButton 
-        label="开始翻译"
-        loadingText="翻译中..."
+        :label="t('videoTranslate.startTranslate')"
+        :loadingText="t('videoTranslate.translating')"
             :loading="translateStore.videoTranslate.isTranslating"
             :disabled="!canTranslate"
         @click="startTranslate"
@@ -89,6 +89,8 @@ import FileSelector from '../components/ui/FileSelector.vue'
 import ActionButton from '../components/ui/ActionButton.vue'
 import ActionSection from '../components/ui/ActionSection.vue'
 import SectionHeader from '../components/ui/SectionHeader.vue'
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
@@ -148,7 +150,8 @@ async function selectFile() {
     translateStore.clearSubtitles,
     translateStore.setSubtitleFile,
     (status) => translateStore.videoTranslate.status = status,
-    translateStore.setSubtitles
+    translateStore.setSubtitles,
+    t
   )
 }
 
@@ -179,7 +182,7 @@ async function startTranslate() {
   try {
     // 直接修改store中的状态
     translateStore.videoTranslate.isTranslating = true
-    translateStore.videoTranslate.status = '准备开始翻译...'
+    translateStore.videoTranslate.status = t('videoTranslate.prepareToTranslate')
     translateStore.updateTranslationProgress(0)
 
     const translateService = getUnifiedTranslateService()
@@ -200,7 +203,7 @@ async function startTranslate() {
 
       try {
         // 显示当前进度
-        translateStore.videoTranslate.status = `正在翻译第 ${translatedItems.length + 1} - ${translatedItems.length + currentBatch.length} 条，共 ${total} 条`
+        translateStore.videoTranslate.status = t('videoTranslate.translatingBatch', { current: translatedItems.length + 1, total: total })
         
         // 对于本地模型，每行单独翻译可能更稳定
         if (settings.value.useOllama && currentBatch.length > 1) {
@@ -208,7 +211,7 @@ async function startTranslate() {
           const batchTranslations: string[] = []
           for (let i = 0; i < currentBatch.length; i++) {
             const singleText = currentBatch[i].text
-            translateStore.videoTranslate.status = `正在翻译第 ${translatedItems.length + i + 1}/${total} 条`
+            translateStore.videoTranslate.status = t('videoTranslate.translatingSingle', { current: translatedItems.length + i + 1, total: total })
             
             const singleTranslation = await SubtitleTranslateHandler.withTimeout(
               translateService.translateText(
@@ -240,7 +243,7 @@ async function startTranslate() {
               translateStore.videoTranslate.targetLanguage,
               [],
               (current, total) => {
-                translateStore.videoTranslate.status = `正在翻译第 ${translatedItems.length + 1} - ${translatedItems.length + currentBatch.length} 条，进度：${current}/${total}`
+                translateStore.videoTranslate.status = t('videoTranslate.translatingBatchProgress', { current: current, total: total })
               }
             ),
             timeout
@@ -259,13 +262,13 @@ async function startTranslate() {
           } else {
             // 如果数量不匹配，切换到逐行翻译
             failedAttempts++
-            translateStore.videoTranslate.status = `批量翻译结果不匹配，切换到逐行翻译 (${translationArray.length} vs ${currentBatch.length})`
+            translateStore.videoTranslate.status = t('videoTranslate.batchTranslationMismatch', { translated: translationArray.length, total: currentBatch.length })
             
             // 逐行翻译
             const batchTranslations: string[] = []
             for (let i = 0; i < currentBatch.length; i++) {
               const singleText = currentBatch[i].text
-              translateStore.videoTranslate.status = `正在单独翻译第 ${translatedItems.length + i + 1}/${total} 条`
+              translateStore.videoTranslate.status = t('videoTranslate.translatingSingle', { current: translatedItems.length + i + 1, total: total })
               
               const singleTranslation = await SubtitleTranslateHandler.withTimeout(
                 translateService.translateText(
@@ -304,17 +307,17 @@ async function startTranslate() {
         failedAttempts++
         
         const errorMessage = error instanceof Error ? error.message : String(error)
-        translateStore.videoTranslate.status = `翻译失败: ${errorMessage}，正在重试...`
+        translateStore.videoTranslate.status = t('videoTranslate.translationFailed', { error: errorMessage })
         
         // 如果失败次数过多，减小批次大小或抛出错误
         if (failedAttempts >= maxFailedAttempts) {
           if (currentBatch.length > 1) {
             // 将当前批次拆分为更小的批次重试
-            translateStore.videoTranslate.status = `连续失败 ${failedAttempts} 次，减小批次大小重试`
+            translateStore.videoTranslate.status = t('videoTranslate.continuousFailures', { failures: failedAttempts })
             // 不移除条目，下一轮循环会使用更小的批次大小
           } else {
             // 如果已经是单条翻译还失败，则跳过这条
-            translateStore.videoTranslate.status = `单条翻译失败 ${failedAttempts} 次，跳过此条`
+            translateStore.videoTranslate.status = t('videoTranslate.singleTranslationFailed', { failures: failedAttempts })
             remainingItems = remainingItems.slice(1) // 跳过当前条目
             failedAttempts = 0 // 重置失败计数
           }
@@ -322,7 +325,7 @@ async function startTranslate() {
         
         // 如果所有条目都无法翻译，抛出错误
         if (remainingItems.length === total && translatedItems.length === 0 && failedAttempts >= maxFailedAttempts) {
-          throw new Error('翻译失败次数过多，请检查网络连接或稍后重试')
+          throw new Error(t('videoTranslate.tooManyTranslationFailures'))
         }
       }
 
@@ -373,9 +376,9 @@ async function startTranslate() {
       }
       await ipcRenderer?.invoke('save-translate-result', translateResult)
 
-      translateStore.videoTranslate.status = `翻译完成！已保存字幕文件：${saveResult.outputPath}`
+      translateStore.videoTranslate.status = t('videoTranslate.translationComplete', { filePath: saveResult.outputPath })
     } else {
-      throw new Error('没有成功翻译的内容')
+      throw new Error(t('videoTranslate.noContentTranslated'))
     }
   } catch (error: unknown) {
     console.error('翻译失败:', error)
@@ -406,7 +409,7 @@ async function startTranslate() {
     }
     await ipcRenderer?.invoke('save-translate-result', translateResult)
     
-    translateStore.videoTranslate.status = `翻译失败: ${errorMessage}`
+    translateStore.videoTranslate.status = t('videoTranslate.translationFailed', { error: errorMessage })
   } finally {
     // 确保在finally块中设置isTranslating为false
     translateStore.videoTranslate.isTranslating = false
@@ -419,7 +422,7 @@ onMounted(() => {
   translateStore.videoTranslate.isTranslating = false
   
   if (translateStore.subtitleFile) {
-    translateStore.videoTranslate.status = `已加载 ${translateStore.subtitles.length} 条字幕`
+    translateStore.videoTranslate.status = t('videoTranslate.loadedSubtitles', { count: translateStore.subtitles.length })
   }
   
   // 确保状态在组件挂载时被保存

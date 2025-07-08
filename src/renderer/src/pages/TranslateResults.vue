@@ -3,6 +3,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useTheme } from 'vuetify'
 import { useTranslateStore } from '../stores/translateStore'
 import PageCard from '../components/ui/PageCard.vue'
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 
 interface TranslateResult {
   id: string
@@ -41,10 +43,10 @@ const sortDesc = ref(true)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const pageSizeOptions = [
-  { title: '10条/页', value: 10 },
-  { title: '20条/页', value: 20 },
-  { title: '50条/页', value: 50 },
-  { title: '100条/页', value: 100 }
+  { title: t('results.perPage', { count: 10 }), value: 10 },
+  { title: t('results.perPage', { count: 20 }), value: 20 },
+  { title: t('results.perPage', { count: 50 }), value: 50 },
+  { title: t('results.perPage', { count: 100 }), value: 100 }
 ]
 
 // 其他状态
@@ -59,8 +61,15 @@ const renameDialog = ref(false)
 const renameTarget = ref<RenameTarget | null>(null)
 const newFileName = ref('')
 
-const types = ['文本', '文档', '字幕']
-const statuses = ['成功', '失败']
+const types = [
+  { title: t('log.text'), value: '文本' },
+  { title: t('log.document'), value: '文档' },
+  { title: t('log.subtitle'), value: '字幕' }
+]
+const statuses = [
+  { title: t('results.statusSuccess'), value: '成功' },
+  { title: t('results.statusFailed'), value: '失败' }
+]
 
 // 使用翻译状态存储
 const translateStore = useTranslateStore()
@@ -162,15 +171,15 @@ const exportResults = async () => {
 
     // 添加CSV头
     const headers = [
-      '类型',
-      '源语言',
-      '目标语言',
-      '源文本',
-      '翻译结果',
-      '时间',
-      '状态',
-      '文件名',
-      '输出文件'
+      t('results.type'),
+      t('results.sourceLanguage'),
+      t('results.targetLanguage'),
+      t('results.sourceText'),
+      t('results.translatedText'),
+      t('results.date'),
+      t('results.status'),
+      t('results.fileName'),
+      t('results.outputFile')
     ].join(',')
 
     const csvData = [headers, ...csvContent].join('\n')
@@ -182,7 +191,7 @@ const exportResults = async () => {
     // 创建下载链接
     const link = document.createElement('a')
     link.href = url
-    link.download = `翻译结果_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`
+    link.download = `${t('results.translatedResults')}_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`
     document.body.appendChild(link)
     link.click()
 
@@ -218,44 +227,44 @@ const isValidPath = (filePath: string | undefined): boolean => {
 // 打开文件
 const openFile = async (filePath: string | undefined) => {
   if (!filePath) {
-    showError('文件路径为空')
+    showError(t('results.emptyFilePath'))
     return
   }
   
   if (!isValidPath(filePath)) {
-    showError(`文件路径不完整或无效: ${filePath}`)
+    showError(t('results.invalidPath', { path: filePath }))
     return
   }
   
   try {
     const result = await ipcRenderer?.invoke('open-file', filePath)
     if (!result?.success) {
-      showError(`打开文件失败: ${result?.error}`)
+      showError(t('results.openFileFailed', { error: result?.error }))
     }
   } catch (error) {
-    showError(`打开文件失败: ${error}`)
+    showError(t('results.openFileFailed', { error: error }))
   }
 }
 
 // 打开文件所在文件夹
 const openFileLocation = async (filePath: string | undefined) => {
   if (!filePath) {
-    showError('文件路径为空')
+    showError(t('results.emptyFilePath'))
     return
   }
   
   if (!isValidPath(filePath)) {
-    showError(`文件路径不完整或无效: ${filePath}`)
+    showError(t('results.invalidPath', { path: filePath }))
     return
   }
   
   try {
     const result = await ipcRenderer?.invoke('open-file-location', filePath)
     if (!result?.success) {
-      showError(`打开文件夹失败: ${result?.error}`)
+      showError(t('results.openFolderFailed', { error: result?.error }))
     }
   } catch (error) {
-    showError(`打开文件夹失败: ${error}`)
+    showError(t('results.openFolderFailed', { error: error }))
   }
 }
 
@@ -320,7 +329,7 @@ const renameFile = async () => {
     const oldPath = type === 'source' ? result.fileName : result.filePath
     if (!oldPath) {
       snackbarColor.value = 'error'
-      snackbarText.value = '文件路径不存在'
+      snackbarText.value = t('results.fileNotFound')
       showSnackbar.value = true
       return
     }
@@ -352,20 +361,20 @@ const renameFile = async () => {
 
       if (updateResult?.success) {
         snackbarColor.value = 'success'
-        snackbarText.value = '重命名成功'
+        snackbarText.value = t('results.renameSuccess')
       } else {
         snackbarColor.value = 'warning'
-        snackbarText.value = '文件重命名成功，但更新存储失败'
+        snackbarText.value = t('results.renameSuccess') + t('results.updateStoreFailed')
         // 重新加载结果以保持数据一致性
         await loadResults()
       }
     } else {
       snackbarColor.value = 'error'
-      snackbarText.value = '重命名失败: ' + renameResult?.error
+      snackbarText.value = t('results.renameFailed', { error: renameResult?.error })
     }
   } catch (error) {
     snackbarColor.value = 'error'
-    snackbarText.value = '重命名失败: ' + error
+    snackbarText.value = t('results.renameFailed', { error: error })
   }
 
   showSnackbar.value = true
@@ -408,7 +417,7 @@ const navigateToPage = (page: string) => {
       <div class="filters-container">
         <v-text-field
           v-model="search"
-          label="搜索"
+          :label="t('results.search')"
           prepend-inner-icon="mdi-magnify"
           variant="outlined"
           density="comfortable"
@@ -419,7 +428,7 @@ const navigateToPage = (page: string) => {
         <v-select
           v-model="selectedType"
           :items="types"
-          label="类型"
+          :label="t('results.type')"
           multiple
           chips
           variant="outlined"
@@ -430,7 +439,7 @@ const navigateToPage = (page: string) => {
         <v-select
           v-model="selectedStatus"
           :items="statuses"
-          label="状态"
+          :label="t('results.status')"
           multiple
           chips
           variant="outlined"
@@ -444,8 +453,9 @@ const navigateToPage = (page: string) => {
           @click="clearFilters"
           prepend-icon="mdi-filter-off"
           class="filter-item"
+          style="text-transform: capitalize;"
         >
-          清除筛选
+          {{ t('results.clearFilters') }}
         </v-btn>
       </div>
       <!-- 工具栏 -->
@@ -456,8 +466,9 @@ const navigateToPage = (page: string) => {
           variant="tonal"
           class="mr-2"
           @click="exportResults"
+          style="text-transform: capitalize;"
         >
-          导出结果
+          {{ t('results.export') }}
         </v-btn>
       </v-toolbar>
       <!-- 表格区域 -->
@@ -465,14 +476,14 @@ const navigateToPage = (page: string) => {
         <v-table fixed-header height="100%">
           <thead>
             <tr>
-              <th class="text-left">类型</th>
-              <th class="text-left">源语言</th>
-              <th class="text-left">目标语言</th>
-              <th class="text-left" style="min-width: 200px;">输入</th>
-              <th class="text-left" style="min-width: 200px;">输出</th>
-              <th class="text-left" style="white-space: nowrap;">时间</th>
-              <th class="text-left">状态</th>
-              <th class="text-center" style="width: 68px;">操作</th>
+              <th class="text-left">{{ t('results.type') }}</th>
+              <th class="text-left">{{ t('results.sourceLanguage') }}</th>
+              <th class="text-left">{{ t('results.targetLanguage') }}</th>
+              <th class="text-left" style="min-width: 200px;">{{ t('results.source') }}</th>
+              <th class="text-left" style="min-width: 200px;">{{ t('results.output') }}</th>
+              <th class="text-left" style="white-space: nowrap;">{{ t('results.date') }}</th>
+              <th class="text-left">{{ t('results.status') }}</th>
+              <th class="text-center" style="width: 68px;">{{ t('results.actions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -482,7 +493,7 @@ const navigateToPage = (page: string) => {
                   :color="result.type === '文本' ? 'primary' : result.type === '文档' ? 'success' : 'info'"
                   size="small"
                 >
-                  {{ result.type }}
+                  {{ result.type === '文本' ? t('log.text') : result.type === '文档' ? t('log.document') : t('log.subtitle') }}
                 </v-chip>
               </td>
               <td>{{ result.sourceLanguage }}</td>
@@ -499,7 +510,7 @@ const navigateToPage = (page: string) => {
                       size="x-small"
                       color="primary"
                       @click.stop="openFile(result.fileName)"
-                      v-tooltip.top="'打开源文件'"
+                      v-tooltip.top="t('results.openFile')"
                     ></v-btn>
                     <v-btn
                       icon="mdi-folder-open"
@@ -507,7 +518,7 @@ const navigateToPage = (page: string) => {
                       size="x-small"
                       color="primary"
                       @click.stop="openFileLocation(result.fileName)"
-                      v-tooltip.top="'打开源文件夹'"
+                      v-tooltip.top="t('results.openFolder')"
                     ></v-btn>
                   </div>
                   <div class="action-group">
@@ -517,7 +528,7 @@ const navigateToPage = (page: string) => {
                       size="x-small"
                       color="warning"
                       @click.stop="openRenameDialog(result, 'source')"
-                      v-tooltip.top="'重命名源文件'"
+                      v-tooltip.top="t('results.renameSource')"
                     ></v-btn>
                   </div>
                 </div>
@@ -534,7 +545,7 @@ const navigateToPage = (page: string) => {
                       size="x-small"
                       color="primary"
                       @click.stop="openFile(result.filePath)"
-                      v-tooltip.top="'打开输出文件'"
+                      v-tooltip.top="t('results.openFile')"
                     ></v-btn>
                     <v-btn
                       icon="mdi-folder-open"
@@ -542,7 +553,7 @@ const navigateToPage = (page: string) => {
                       size="x-small"
                       color="primary"
                       @click.stop="openFileLocation(result.filePath)"
-                      v-tooltip.top="'打开输出文件夹'"
+                      v-tooltip.top="t('results.openFolder')"
                     ></v-btn>
                   </div>
                   <div class="action-group">
@@ -552,7 +563,7 @@ const navigateToPage = (page: string) => {
                       size="x-small"
                       color="warning"
                       @click.stop="openRenameDialog(result, 'output')"
-                      v-tooltip.top="'重命名输出文件'"
+                      v-tooltip.top="t('results.renameOutput')"
                     ></v-btn>
                   </div>
                 </div>
@@ -563,7 +574,7 @@ const navigateToPage = (page: string) => {
                   :color="result.status === '成功' ? 'success' : 'error'"
                   size="small"
                 >
-                  {{ result.status }}
+                  {{ result.status === '成功' ? t('results.statusSuccess') : t('results.statusFailed') }}
                 </v-chip>
               </td>
               <td class="text-center">
@@ -583,7 +594,7 @@ const navigateToPage = (page: string) => {
       <!-- 分页控件 -->
       <div class="pagination d-flex align-center justify-space-between">
         <div class="text-caption text-grey d-flex align-center">
-          <span>第 {{ startItem }}-{{ endItem }} 条，共 {{ filteredResults.length }} 条</span>
+          <span>{{ t('results.pageStats', { start: startItem, end: endItem, total: filteredResults.length }) }}</span>
         </div>
         <div class="d-flex align-center gap-4">
           <v-select
@@ -591,7 +602,7 @@ const navigateToPage = (page: string) => {
             :items="pageSizeOptions"
             item-title="title"
             item-value="value"
-            label="每页显示"
+            :label="t('results.perPage', { count: pageSize })"
             density="compact"
             variant="outlined"
             hide-details
@@ -619,31 +630,17 @@ const navigateToPage = (page: string) => {
     <v-dialog v-model="detailDialog" max-width="1000">
       <v-card v-if="selectedResult" class="detail-dialog">
         <v-card-title class="text-h5 d-flex align-center">
-          翻译详情
-          <v-chip
-            :color="selectedResult.type === '文本' ? 'primary' : selectedResult.type === '文档' ? 'success' : 'info'"
-            class="ml-2"
-          >
-            {{ selectedResult.type }}
+          {{ t('results.details') }}
+          <v-chip :color="selectedResult.type === '文本' ? 'primary' : selectedResult.type === '文档' ? 'success' : 'info'" class="ml-2">
+            {{ selectedResult.type === '文本' ? t('log.text') : selectedResult.type === '文档' ? t('log.document') : t('log.subtitle') }}
           </v-chip>
           <v-spacer></v-spacer>
           <template v-if="selectedResult.fileName">
-            <v-btn
-              variant="text"
-              color="primary"
-              class="mr-2"
-              @click="openFile(selectedResult.filePath!)"
-              prepend-icon="mdi-file"
-            >
-              打开文件
+            <v-btn variant="text" color="primary" class="mr-2" @click="openFile(selectedResult.filePath!)" prepend-icon="mdi-file" style="text-transform: capitalize;">
+              {{ t('results.openFile') }}
             </v-btn>
-            <v-btn
-              variant="text"
-              color="primary"
-              @click="openFileLocation(selectedResult.filePath!)"
-              prepend-icon="mdi-folder-open"
-            >
-              打开所在文件夹
+            <v-btn variant="text" color="primary" @click="openFileLocation(selectedResult.filePath!)" prepend-icon="mdi-folder-open" style="text-transform: capitalize;">
+              {{ t('results.openFolder') }}
             </v-btn>
           </template>
         </v-card-title>
@@ -653,23 +650,20 @@ const navigateToPage = (page: string) => {
         <v-card-text class="detail-content">
           <div class="d-flex align-center mb-4">
             <div class="text-body-1">
-              <strong>翻译时间：</strong>{{ formatDate(selectedResult.timestamp) }}
+              <strong>{{ t('results.date') }}：</strong>{{ formatDate(selectedResult.timestamp) }}
             </div>
             <v-spacer></v-spacer>
             <div class="text-body-1">
-              <strong>状态：</strong>
-              <v-chip
-                :color="selectedResult.status === '成功' ? 'success' : 'error'"
-                size="small"
-              >
-                {{ selectedResult.status }}
+              <strong>{{ t('results.status') }}：</strong>
+              <v-chip :color="selectedResult.status === '成功' ? 'success' : 'error'" size="small">
+                {{ selectedResult.status === '成功' ? t('results.statusSuccess') : t('results.statusFailed') }}
               </v-chip>
             </div>
           </div>
 
           <v-row>
             <v-col cols="6">
-              <div class="text-h6 mb-2">源文本 ({{ selectedResult.sourceLanguage }})</div>
+              <div class="text-h6 mb-2">{{ t('results.source') }} ({{ selectedResult.sourceLanguage }})</div>
               <v-card
                 variant="outlined"
                 :class="{'content-card': true, 'content-card-large': getLineCount(selectedResult.sourceContent) > 10}"
@@ -678,7 +672,7 @@ const navigateToPage = (page: string) => {
               </v-card>
             </v-col>
             <v-col cols="6">
-              <div class="text-h6 mb-2">翻译结果 ({{ selectedResult.targetLanguage }})</div>
+              <div class="text-h6 mb-2">{{ t('results.output') }} ({{ selectedResult.targetLanguage }})</div>
               <v-card
                 variant="outlined"
                 :class="{'content-card': true, 'content-card-large': getLineCount(selectedResult.translatedContent) > 10}"
@@ -691,12 +685,8 @@ const navigateToPage = (page: string) => {
 
         <v-card-actions class="detail-actions">
           <v-spacer></v-spacer>
-          <v-btn
-            color="primary"
-            variant="text"
-            @click="detailDialog = false"
-          >
-            关闭
+          <v-btn color="primary" variant="text" @click="detailDialog = false">
+            {{ t('results.close') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -705,32 +695,18 @@ const navigateToPage = (page: string) => {
     <!-- 重命名对话框 -->
     <v-dialog v-model="renameDialog" max-width="500">
       <v-card>
-        <v-card-title>重命名文件</v-card-title>
+        <v-card-title>{{ t('results.rename') }}</v-card-title>
         <v-card-text>
-          <div class="text-body-2 mb-4">当前文件名：{{ renameTarget?.type === 'source' ? getFileName(renameTarget.result.fileName) : getFileName(renameTarget?.result.filePath) }}</div>
-          <v-text-field
-            v-model="newFileName"
-            label="新文件名"
-            hide-details
-            class="mt-2"
-          ></v-text-field>
+          <div class="text-body-2 mb-4">{{ t('results.currentName') }}：{{ renameTarget?.type === 'source' ? getFileName(renameTarget.result.fileName) : getFileName(renameTarget?.result.filePath) }}</div>
+          <v-text-field v-model="newFileName" :label="t('results.newName')" hide-details class="mt-2"></v-text-field>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            color="primary"
-            variant="text"
-            @click="renameDialog = false"
-          >
-            取消
+          <v-btn color="primary" variant="text" @click="renameDialog = false">
+            {{ t('results.cancel') }}
           </v-btn>
-          <v-btn
-            color="primary"
-            variant="text"
-            @click="renameFile"
-            :disabled="!newFileName"
-          >
-            确认
+          <v-btn color="primary" variant="text" @click="renameFile" :disabled="!newFileName">
+            {{ t('results.confirm') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -934,5 +910,14 @@ const navigateToPage = (page: string) => {
 
 .content-card::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--v-theme-on-surface), 0.3);
+}
+
+.filters-container .v-btn,
+.v-toolbar .v-btn {
+  text-transform: capitalize !important;
+}
+
+.detail-dialog .v-btn {
+  text-transform: capitalize !important;
 }
 </style> 

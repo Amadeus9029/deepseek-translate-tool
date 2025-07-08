@@ -74,5 +74,6 @@ const selectFile = () => {
 
 .select-btn {
   min-width: 100px;
+  text-transform: capitalize;
 }
 </style> 

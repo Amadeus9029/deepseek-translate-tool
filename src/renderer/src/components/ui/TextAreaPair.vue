@@ -83,6 +83,7 @@ const copyResult = () => {
           density="compact" 
           @click="clearSourceText"
           :disabled="!sourceText || sourceDisabled"
+          style="text-transform: capitalize;"
         >{{ t('textTranslate.clearButton') }}</v-btn>
       </div>
       <v-textarea
@@ -107,6 +108,7 @@ const copyResult = () => {
           density="compact" 
           @click="copyResult"
           :disabled="!translatedText"
+          style="text-transform: capitalize;"
         >{{ t('textTranslate.copyButton') }}</v-btn>
       </div>
       <v-textarea
