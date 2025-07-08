@@ -4,6 +4,7 @@ import { useTheme } from 'vuetify'
 import { useI18n } from 'vue-i18n'
 
 interface MenuItem {
+  key: string
   title: string
   icon: string
 }
@@ -37,16 +38,16 @@ const isDark = computed(() => theme.global.current.value.dark)
     <v-list class="sidebar-list">
       <v-list-item
         v-for="item in menuItems"
-        :key="item.title"
+        :key="item.key"
         :title="item.title"
         :prepend-icon="item.icon"
-        :active="selectedMenu === item.title"
-        @click="emit('menuSelect', item.title)"
+        :active="selectedMenu === item.key"
+        @click="emit('menuSelect', item.key)"
         class="sidebar-list-item"
-        :class="{ 'sidebar-list-item--active': selectedMenu === item.title }"
+        :class="{ 'sidebar-list-item--active': selectedMenu === item.key }"
       >
         <template #title>
-          <span :class="{ 'active-title': selectedMenu === item.title }">{{ item.title }}</span>
+          <span :class="{ 'active-title': selectedMenu === item.key }">{{ item.title }}</span>
         </template>
       </v-list-item>
     </v-list>

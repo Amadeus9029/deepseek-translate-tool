@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed, nextTick } from 'vue'
 import { useTheme } from 'vuetify'
 import { settings, saveSettings as updateSettingsService, ollamaModelData as serviceOllamaModelData, saveOllamaModelData, updateModelParams } from '../services/SettingsService'
 import { useTranslateStore } from '../stores/translateStore'
@@ -349,9 +349,9 @@ watch(useOllama, async (newValue) => {
 
 // 监听主题变化
 watch(themeMode, (newMode) => {
-  updateTheme(newMode)
-  localStorage.setItem('theme-mode', newMode)
-})
+  // updateTheme(newMode) // 不再直接调用updateTheme
+  // localStorage.setItem('theme-mode', newMode) // 不再直接调用updateTheme
+});
 
 // 选择存储路径
 const selectSavePath = async () => {
@@ -369,11 +369,11 @@ const selectSavePath = async () => {
 onMounted(async () => {
   await loadSettings();
   
-  const savedTheme = localStorage.getItem('theme-mode');
-  if (savedTheme) {
-    themeMode.value = savedTheme;
-    updateTheme(savedTheme);
-  }
+  // const savedTheme = localStorage.getItem('theme-mode'); // 不再直接调用updateTheme
+  // if (savedTheme) {
+  //   themeMode.value = savedTheme;
+  //   updateTheme(savedTheme);
+  // }
 
   // 监听系统主题变化
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
@@ -423,12 +423,7 @@ const saveSettings = async () => {
   // 更新Pinia状态
   store.updateSettings(newSettings)
   
-  // 立即应用主题设置
-  updateTheme(themeMode.value)
-  
-  // 立即应用语言设置
-  await setI18nLanguage(language.value)
-
+  // 不再直接调用updateTheme和setI18nLanguage
   // 保存设置到主进程
   try {
     const result = await ipcRenderer?.invoke('save-settings', {
@@ -810,6 +805,16 @@ watch([
 ], () => {
   saveSettings()
 })
+
+// 语言下拉items响应式
+const languageOptions = computed(() => [
+  { title: t('settings.langChinese'), value: 'zh-CN' },
+  { title: t('settings.langEnglish'), value: 'en-US' }
+])
+// 监听全局settings变化同步本地language
+watch(() => settings.value.language, (val) => {
+  language.value = val
+})
 </script>
 
 <template>
@@ -965,10 +970,7 @@ watch([
       <v-col cols="12">
         <v-select
           v-model="language"
-          :items="[
-            { title: '中文', value: 'zh-CN' },
-            { title: 'English', value: 'en-US' }
-          ]"
+          :items="languageOptions"
           item-title="title"
           item-value="value"
           :label="t('settings.language')"

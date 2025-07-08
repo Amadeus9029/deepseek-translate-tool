@@ -13,24 +13,24 @@ import { settings } from './services/SettingsService'
 import TitleBar from './components/layout/TitleBar.vue'
 import Sidebar from './components/layout/Sidebar.vue'
 import MainContent from './components/layout/MainContent.vue'
+import { i18n } from './i18n'
+import { setI18nLanguage } from './i18n'
 
 const drawer = ref(true)
 const isMaximized = ref(false)
 const { t } = useI18n()
 
 const menuItems = computed(() => [
-  { title: t('menu.textTranslate'), icon: 'mdi-translate' },
-  { title: t('menu.documentTranslate'), icon: 'mdi-file-document' },
-  // { title: '图片翻译', icon: 'mdi-image' },
-  // { title: '语音翻译', icon: 'mdi-microphone' },
-  { title: t('menu.videoTranslate'), icon: 'mdi-video' },
-  { title: t('menu.translateResults'), icon: 'mdi-text-box-check' },
-  { title: t('menu.logs'), icon: 'mdi-file-document-edit' },
-  { title: t('menu.settings'), icon: 'mdi-cog' },
-  { title: t('menu.about'), icon: 'mdi-information' }
+  { key: 'textTranslate', title: t('menu.textTranslate'), icon: 'mdi-translate' },
+  { key: 'documentTranslate', title: t('menu.documentTranslate'), icon: 'mdi-file-document' },
+  { key: 'videoTranslate', title: t('menu.videoTranslate'), icon: 'mdi-video' },
+  { key: 'translateResults', title: t('menu.translateResults'), icon: 'mdi-text-box-check' },
+  { key: 'logs', title: t('menu.logs'), icon: 'mdi-file-document-edit' },
+  { key: 'settings', title: t('menu.settings'), icon: 'mdi-cog' },
+  { key: 'about', title: t('menu.about'), icon: 'mdi-information' }
 ])
 
-const selectedMenu = ref(t('menu.textTranslate'))
+const selectedMenu = ref('textTranslate')
 const isAlwaysOnTop = ref(false)
 const theme = useTheme()
 
@@ -38,26 +38,33 @@ const theme = useTheme()
 const isDark = computed(() => theme.global.current.value.dark)
 
 // 添加一个key来强制重新渲染组件
-const componentKey = ref(0)
+const componentKey = computed(() => `${selectedMenu.value}`)
 
-// 监听菜单切换，当切换到日志或翻译结果时，强制重新渲染组件
-watch(selectedMenu, (newValue) => {
-  // 每次切换菜单都增加key值，强制重新渲染组件
-  componentKey.value++
-  
-  // 从设置中获取当前主题设置并应用
+// 监听菜单切换时应用主题
+watch(selectedMenu, () => {
   applyThemeFromSettings()
 })
 
 // 监听语言变化，更新selectedMenu
 watch(() => t('menu.textTranslate'), () => {
   // 找到当前选中菜单项对应的新翻译
-  const currentMenuIndex = menuItems.value.findIndex(item => item.title === selectedMenu.value)
+  const currentMenuIndex = menuItems.value.findIndex(item => item.key === selectedMenu.value)
   if (currentMenuIndex >= 0) {
     // 更新选中的菜单项
-    selectedMenu.value = menuItems.value[currentMenuIndex].title
+    selectedMenu.value = menuItems.value[currentMenuIndex].key
   }
 }, { immediate: true })
+
+// 监听全局设置的主题和语言变化，确保切换立即生效
+watch(() => settings.value.themeMode, () => {
+  applyThemeFromSettings()
+})
+
+watch(() => settings.value.language, async (newLang) => {
+  await setI18nLanguage(newLang)
+  // 强制刷新menuItems依赖的t()
+  menuItems.value // 触发computed重新计算
+})
 
 // 从设置中获取并应用主题
 const applyThemeFromSettings = () => {
@@ -79,19 +86,19 @@ onMounted(() => {
 // 根据选中的菜单返回对应的组件
 const currentComponent = computed(() => {
   switch (selectedMenu.value) {
-    case t('menu.textTranslate'):
+    case 'textTranslate':
       return TextTranslate
-    case t('menu.documentTranslate'):
+    case 'documentTranslate':
       return DocumentTranslate
-    case t('menu.videoTranslate'):
+    case 'videoTranslate':
       return VideoTranslate
-    case t('menu.translateResults'):
+    case 'translateResults':
       return TranslateResults
-    case t('menu.logs'):
+    case 'logs':
       return TranslateLog
-    case t('menu.settings'):
+    case 'settings':
       return Settings
-    case t('menu.about'):
+    case 'about':
       return About
     default:
       return TextTranslate
@@ -115,8 +122,8 @@ const toggleAlwaysOnTop = () => {
 }
 
 // 菜单选择处理
-const handleMenuSelect = (menu: string) => {
-  selectedMenu.value = menu
+const handleMenuSelect = (menuKey: string) => {
+  selectedMenu.value = menuKey
 }
 
 // 监听窗口状态变化
@@ -143,7 +150,7 @@ if (ipcRenderer) {
     })
     
     if (menuItem) {
-      selectedMenu.value = menuItem.title
+      selectedMenu.value = menuItem.key
     }
   })
 }
@@ -176,6 +183,7 @@ if (ipcRenderer) {
           :selected-menu="selectedMenu"
           :component-key="componentKey"
           :current-component="currentComponent"
+          :menu-items="menuItems"
         />
       </div>
     </v-app>
