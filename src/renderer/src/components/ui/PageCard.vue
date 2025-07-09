@@ -26,17 +26,16 @@ defineProps({
 .page-container {
   width: 100%;
   height: 100%;
-  padding: 16px;
+  padding: 8px;
 }
 
 .translate-card {
   width: 100%;
   height: 100%;
   background: rgb(var(--v-theme-surface));
-  /* border: 1px solid rgb(var(--v-theme-surface-variant)); */
   border-radius: 8px;
   border: none;
-  padding-right: 8px;
+  padding: 0px;
 }
 
 .translate-title {

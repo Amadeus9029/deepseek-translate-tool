@@ -730,7 +730,7 @@ const navigateToPage = (page: string) => {
   gap: 16px;
   align-items: center;
   flex-wrap: nowrap;
-  padding: 16px;
+  padding: 0px;
   min-height: 72px; /* 固定搜索栏高度 */
   background: rgb(var(--v-theme-surface));
 }
@@ -756,7 +756,7 @@ const navigateToPage = (page: string) => {
   flex: 1;
   min-height: 0; /* 允许flex-grow收缩 */
   overflow: hidden;
-  padding: 0 16px;
+  padding: 0;
 }
 
 :deep(.v-table) {
@@ -857,10 +857,9 @@ const navigateToPage = (page: string) => {
 /* 分页相关样式 */
 .pagination {
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  padding: 16px 24px;
-  min-height: 84px; /* 固定分页栏高度 */
+  padding: 0;
+  min-height: 64px; /* 固定分页栏高度 */
   background: rgb(var(--v-theme-surface));
-  margin-top: 16px;
 }
 
 .page-size-select {

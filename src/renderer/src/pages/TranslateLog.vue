@@ -567,8 +567,8 @@ onMounted(async () => {
 
 /* 过滤器区域样式 */
 .filters-container {
-  padding: 16px;
   min-height: 72px;
+  padding: 0px;
   background: rgb(var(--v-theme-surface));
 }
 
@@ -578,7 +578,7 @@ onMounted(async () => {
   min-height: 0;
   overflow: auto;
   padding: 0 16px;
-  margin: 16px 0;
+  margin: 0;
 }
 
 .log-list {
@@ -615,8 +615,8 @@ onMounted(async () => {
 /* 分页相关样式 */
 .pagination {
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  padding: 16px 24px;
-  min-height: 84px;
+  padding: 0;
+  min-height: 64px;
   background: rgb(var(--v-theme-surface));
 }
 
