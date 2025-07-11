@@ -144,7 +144,8 @@ onMounted(() => {
 async function selectFile() {
   const filePath = await DocumentTranslateHandler.selectFile(
     ipcRenderer, 
-    store.addDocumentLog
+    store.addDocumentLog,
+    t
   )
   
   if (filePath) {
@@ -156,7 +157,8 @@ async function selectFile() {
 async function selectRefFile() {
   const filePath = await DocumentTranslateHandler.selectRefFile(
     ipcRenderer, 
-    store.addDocumentLog
+    store.addDocumentLog,
+    t
   )
   
   if (filePath) {
@@ -174,7 +176,8 @@ async function startTranslate() {
     store.documentTranslate.internalRefLang,
     store.documentTranslate.externalRefFile,
     store.documentTranslate.externalRefLang,
-    store.addDocumentLog
+    store.addDocumentLog,
+    t
   )
   
   if (!isValid) return
