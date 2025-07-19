@@ -25,13 +25,14 @@ export default {
     failed: 'Failed'
   },
   menu: {
-    textTranslate: 'Text',
-    documentTranslate: 'Document',
-    videoTranslate: 'Subtitle',
-    translateResults: 'Results',
-    logs: 'Logs',
+    textTranslate: 'Text Translation',
+    documentTranslate: 'Document Translation',
+    videoTranslate: 'Video Translation',
+    translateResults: 'Translation Results',
+    logs: 'Translation Logs',
     settings: 'Settings',
-    about: 'About'
+    about: 'About',
+    docxParser: 'Word Parser'
   },
   textTranslate: {
     sourceText: 'Source Text',
@@ -45,6 +46,8 @@ export default {
   },
   documentTranslate: {
     fileSettings: 'File Settings',
+    documentFile: 'Document File',
+    selectDocumentFile: 'Please select document file (supports Excel and Word formats)',
     excelFile: 'Excel File',
     selectExcelFile: 'Please select Excel file',
     referenceSettings: 'Reference Settings',
@@ -61,11 +64,12 @@ export default {
     noLogs: 'No logs available',
     translating: 'Translating...',
     selectFile: 'Select File',
-    emptyFile: 'Please select the Excel file to translate',
+    emptyFile: 'Please select the document file to translate',
     emptyTarget: 'Please select target languages',
     emptySource: 'Please select source language',
     emptyRefLang: 'Please select reference language column',
     emptyRefFile: 'Please select reference Excel file',
+    wordNoReference: 'Word documents do not support reference settings, please select "No Reference"',
     translateFailed: 'Translation failed: {error}',
     saveSuccess: 'Translation results saved',
     saveFailed: 'Failed to save translation results: {error}',
@@ -76,7 +80,12 @@ export default {
     logRowDone: 'Completed all language translations for row {row}/{total}',
     logSaved: 'All translation results saved to: {path}',
     logAllDone: 'Translation task completed!',
-    logError: 'Translation error: {error}'
+    logError: 'Translation error: {error}',
+    selectedFile: 'Selected file: {file}',
+    translatingTo: 'Translating to {lang}...',
+    allCompleted: 'All translations completed!',
+    logSavedLang: '{lang} version saved: {path}',
+    selectTargetLanguage: 'Select target language'
   },
   videoTranslate: {
     subtitleFile: 'Subtitle File',
@@ -114,9 +123,11 @@ export default {
     apiSettings: 'DeepSeek API Settings',
     apiKey: 'API Key',
     apiKeyHint: 'Note: Please ensure your API Key has sufficient balance. Translation will fail if the balance is insufficient.',
+    checkBalance: 'Check Balance',
+    balanceInfo: 'Current Balance: {credits}',
     modelSettings: 'Model Settings',
     selectModel: 'Select Model',
-    modelHint: 'DeepSeek Reasoner model provides higher quality translations but consumes more API quota. Recommended for important documents.',
+    modelHint: 'DeepSeek Reasoner model provides higher translation quality but consumes more API credits. Recommended for important documents.',
     ollamaSettings: 'Ollama Local AI Settings',
     useOllama: 'Use Ollama Local AI',
     ollamaHint: 'When enabled, translations will use local Ollama service without requiring an API Key. Ollama must be installed and running.',
@@ -172,7 +183,8 @@ export default {
     langChinese: 'Chinese',
     langEnglish: 'English',
     userSavedModel: 'User saved model',
-    testingModel: 'Connection successful, testing if model {model} is available...'
+    testingModel: 'Connection successful, testing if model {model} is available...',
+    balanceCheckFailed: 'Failed to check balance: {error}'
   },
   about: {
     title: 'About',
@@ -197,6 +209,7 @@ export default {
     apiKeyMissing: 'API Key not set',
     connectionFailed: 'Connection failed: {error}',
     translateFailed: 'Translation failed: {error}',
+    balanceCheckFailed: 'Failed to check balance: {error}',
     fileReadFailed: 'File read failed: {error}',
     fileSaveFailed: 'File save failed: {error}',
     invalidFile: 'Invalid file format',

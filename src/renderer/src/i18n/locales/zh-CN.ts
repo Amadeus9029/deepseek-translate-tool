@@ -27,11 +27,12 @@ export default {
   menu: {
     textTranslate: '文本翻译',
     documentTranslate: '文档翻译',
-    videoTranslate: '字幕翻译',
+    videoTranslate: '视频翻译',
     translateResults: '翻译结果',
-    logs: '日志',
+    logs: '翻译日志',
     settings: '设置',
-    about: '关于'
+    about: '关于',
+    docxParser: 'Word解析'
   },
   textTranslate: {
     sourceText: '源文本',
@@ -45,6 +46,8 @@ export default {
   },
   documentTranslate: {
     fileSettings: '文件设置',
+    documentFile: '文档文件',
+    selectDocumentFile: '请选择文档文件（支持Excel和Word格式）',
     excelFile: 'Excel文件',
     selectExcelFile: '请选择Excel文件',
     referenceSettings: '翻译参考设置',
@@ -61,11 +64,12 @@ export default {
     noLogs: '暂无日志信息',
     translating: '翻译中...',
     selectFile: '选择文件',
-    emptyFile: '请选择要翻译的Excel文件',
+    emptyFile: '请选择要翻译的文档文件',
     emptyTarget: '请选择目标语言',
     emptySource: '请选择源语言',
     emptyRefLang: '请选择参考语言列',
     emptyRefFile: '请选择参考Excel文件',
+    wordNoReference: 'Word文档不支持参考源设置，请选择"不使用参考源"',
     translateFailed: '翻译失败: {error}',
     saveSuccess: '翻译结果已保存',
     saveFailed: '保存翻译结果失败: {error}',
@@ -76,7 +80,12 @@ export default {
     logRowDone: '完成第 {row}/{total} 行的所有语言翻译',
     logSaved: '已保存所有翻译结果到: {path}',
     logAllDone: '翻译任务已完成！',
-    logError: '翻译出错: {error}'
+    logError: '翻译出错: {error}',
+    selectedFile: '已选择文件: {file}',
+    translatingTo: '正在翻译为 {lang}...',
+    allCompleted: '全部翻译完成！',
+    logSavedLang: '{lang} 版本已保存: {path}',
+    selectTargetLanguage: '请选择目标语言'
   },
   videoTranslate: {
     subtitleFile: '字幕文件',
@@ -114,6 +123,8 @@ export default {
     apiSettings: 'DeepSeek API设置',
     apiKey: 'API Key',
     apiKeyHint: '注意：请确保API Key有足够的余额，余额不足时翻译将会失败。',
+    checkBalance: '查询余额',
+    balanceInfo: '当前余额: {credits}',
     modelSettings: '模型设置',
     selectModel: '选择模型',
     modelHint: 'DeepSeek Reasoner模型的翻译质量更高，但会消耗更多API额度，建议重要文档使用此模型。',
@@ -172,7 +183,8 @@ export default {
     langChinese: '中文',
     langEnglish: 'English',
     userSavedModel: '用户保存的模型',
-    testingModel: '连接成功，正在测试模型 {model} 是否可用...'
+    testingModel: '连接成功，正在测试模型 {model} 是否可用...',
+    balanceCheckFailed: '查询余额失败: {error}'
   },
   about: {
     title: '关于',
@@ -193,16 +205,17 @@ export default {
   },
   errors: {
     emptySource: '源文本为空',
-    translating: '正在翻译中',
+    translating: '翻译中',
     apiKeyMissing: 'API Key未设置',
     connectionFailed: '连接失败: {error}',
     translateFailed: '翻译失败: {error}',
+    balanceCheckFailed: '查询余额失败: {error}',
+    unknown: '未知错误',
     fileReadFailed: '文件读取失败: {error}',
     fileSaveFailed: '文件保存失败: {error}',
     invalidFile: '无效的文件格式',
     noSubtitles: '未找到字幕',
     timeout: '请求超时',
-    unknownError: '未知错误',
     connectionSuccessModelNotInstalled: '连接成功，但模型 {baseModelName} 未安装。请先使用命令 \'ollama pull {baseModelName}\' 安装模型。',
     modelParamsLoadFailed: '获取模型参数失败，请手动选择',
     refreshModelListFailed: '刷新模型列表失败'

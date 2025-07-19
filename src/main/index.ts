@@ -5,8 +5,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
-// 类型定义导入
-import { SubtitleItem, TranslateLog, TranslateResult } from './types/types'
+
 
 // 导入模块化组件
 import { setupLogger } from './utils/logger'
@@ -18,6 +17,7 @@ import { setupTranslateResultHandlers } from './ipc/translate-result-handlers'
 import { setupSettingsHandlers } from './ipc/settings-handlers'
 import { setupOllamaHandlers } from './ipc/ollama-handlers'
 import { setupNavigationHandlers } from './ipc/navigation-handlers'
+import { setupDocxTranslatorHandlers } from './ipc/docx-translator-handlers'
 
 // 初始化日志系统
 const logger = setupLogger()
@@ -47,6 +47,7 @@ function setupIPC() {
   setupSettingsHandlers(logger)
   setupOllamaHandlers(logger)
   setupNavigationHandlers()
+  setupDocxTranslatorHandlers(logger)
 }
 
 /**

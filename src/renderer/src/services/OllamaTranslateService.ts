@@ -1,4 +1,5 @@
 import { settings } from './SettingsService'
+import { ITranslateService, TranslateProgressCallback } from './ITranslateService'
 
 declare global {
   interface Window {
@@ -8,7 +9,10 @@ declare global {
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
-export class OllamaTranslateService {
+/**
+ * Ollama本地模型翻译服务实现
+ */
+export class OllamaTranslateService implements ITranslateService {
   constructor(
     private readonly ollamaUrl: string,
     private readonly ollamaModel: string
@@ -42,6 +46,8 @@ export class OllamaTranslateService {
         setTimeout(() => reject(new Error('请求超时，请检查Ollama服务是否正常运行')), 30000); // 30秒超时
       });
       
+      console.log(`正在使用模型 ${this.ollamaModel} 翻译文本...`);
+      
       // 实际请求
       const requestPromise = ipcRenderer.invoke('ollama-fetch', {
         baseUrl: this.ollamaUrl,
@@ -54,22 +60,57 @@ export class OllamaTranslateService {
       const result = await Promise.race([requestPromise, timeoutPromise]);
 
       if (!result.success) {
+        console.error('Ollama请求失败:', result.error);
         throw new Error(`请求失败: ${result.error}`)
       }
 
-      const responseData = result.data
-      if (responseData.message && responseData.message.content) {
-        let content = responseData.message.content.trim()
-        
-        // 移除思考内容
-        content = this.cleanTranslationOutput(content)
-        
-        return content
+      // 简化日志输出，不打印完整响应
+      console.log('Ollama响应成功');
+      
+      const responseData = result.data;
+      
+      // 检查响应格式
+      if (!responseData) {
+        console.error('Ollama返回空响应');
+        throw new Error('Ollama返回空响应');
+      }
+      
+      // 尝试多种可能的响应格式
+      if (responseData.message && typeof responseData.message.content === 'string') {
+        // 标准格式
+        let content = responseData.message.content.trim();
+        content = this.cleanTranslationOutput(content);
+        return content;
+      } else if (responseData.response && typeof responseData.response === 'string') {
+        // 替代格式1
+        let content = responseData.response.trim();
+        content = this.cleanTranslationOutput(content);
+        return content;
+      } else if (responseData.content && typeof responseData.content === 'string') {
+        // 替代格式2
+        let content = responseData.content.trim();
+        content = this.cleanTranslationOutput(content);
+        return content;
+      } else if (typeof responseData === 'string') {
+        // 纯文本响应
+        let content = responseData.trim();
+        content = this.cleanTranslationOutput(content);
+        return content;
       } else {
-        throw new Error('无效的响应格式，请检查模型输出')
+        // 尝试从响应中提取任何可能的文本内容
+        console.error('无法识别的Ollama响应格式');
+        
+        // 尝试从对象中找到任何字符串属性
+        const extractedText = this.extractTextFromResponse(responseData);
+        if (extractedText) {
+          console.log('从响应中提取的文本内容');
+          return this.cleanTranslationOutput(extractedText);
+        }
+        
+        throw new Error('无效的响应格式，请检查模型输出');
       }
     } catch (error) {
-      console.error('Ollama translation request failed:', error)
+      console.error('Ollama翻译请求失败:', error)
       // 提供更具体的错误信息
       if (error instanceof Error) {
         if (error.message.includes('ECONNREFUSED') || error.message.includes('请求失败')) {
@@ -81,6 +122,44 @@ export class OllamaTranslateService {
       }
       throw new Error('翻译请求失败，请检查Ollama服务状态')
     }
+  }
+  
+  /**
+   * 尝试从复杂响应对象中提取文本内容
+   */
+  private extractTextFromResponse(response: any): string | null {
+    if (!response) return null;
+    
+    // 递归搜索对象中的字符串属性
+    const findStringProperties = (obj: any, maxDepth: number = 3, currentDepth: number = 0): string[] => {
+      if (currentDepth > maxDepth) return [];
+      if (typeof obj !== 'object' || obj === null) return [];
+      
+      const results: string[] = [];
+      
+      for (const key in obj) {
+        const value = obj[key];
+        if (typeof value === 'string' && value.trim().length > 0) {
+          // 排除一些不太可能是翻译结果的短字符串和特定键
+          if (value.length > 10 && !['model', 'role', 'id', 'type', 'status'].includes(key)) {
+            results.push(value);
+          }
+        } else if (typeof value === 'object' && value !== null) {
+          results.push(...findStringProperties(value, maxDepth, currentDepth + 1));
+        }
+      }
+      
+      return results;
+    };
+    
+    const stringProperties = findStringProperties(response);
+    
+    // 找到最长的字符串，可能是翻译结果
+    if (stringProperties.length > 0) {
+      return stringProperties.sort((a, b) => b.length - a.length)[0];
+    }
+    
+    return null;
   }
 
   /**
@@ -215,7 +294,7 @@ export class OllamaTranslateService {
     sourceLang: string,
     targetLang: string,
     terms: [string, string][] = [],
-    onProgress?: (current: number, total: number) => void,
+    onProgress?: TranslateProgressCallback,
     translationType: 'text' | 'document' | 'subtitle' = 'text'
   ): Promise<string> {
     try {
@@ -294,22 +373,16 @@ export class OllamaTranslateService {
   }
 }
 
-// 导出单例实例
-let ollamaTranslateService: OllamaTranslateService | null = null
-
-export function initOllamaTranslateService(): void {
-  const { ollamaUrl, ollamaModel } = settings.value
-  ollamaTranslateService = new OllamaTranslateService(ollamaUrl, ollamaModel)
+/**
+ * Ollama翻译服务工厂
+ */
+export class OllamaTranslateServiceFactory {
+  createTranslateService(): ITranslateService {
+    const { ollamaUrl, ollamaModel } = settings.value
+    return new OllamaTranslateService(ollamaUrl, ollamaModel)
+  }
 }
 
-export function getOllamaTranslateService(): OllamaTranslateService {
-  const { ollamaUrl, ollamaModel } = settings.value
-  
-  if (!ollamaTranslateService || 
-      ollamaTranslateService['ollamaUrl'] !== ollamaUrl || 
-      ollamaTranslateService['ollamaModel'] !== ollamaModel) {
-    ollamaTranslateService = new OllamaTranslateService(ollamaUrl, ollamaModel)
-  }
-  
-  return ollamaTranslateService
-} 
+// 导出工厂单例
+const ollamaTranslateServiceFactory = new OllamaTranslateServiceFactory()
+export { ollamaTranslateServiceFactory } 

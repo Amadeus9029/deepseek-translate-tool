@@ -4,7 +4,6 @@ import { useTheme } from 'vuetify'
 import { settings, saveSettings as updateSettingsService, ollamaModelData as serviceOllamaModelData, saveOllamaModelData, updateModelParams } from '../services/SettingsService'
 import { useTranslateStore } from '../stores/translateStore'
 import { useI18n } from 'vue-i18n'
-import { setI18nLanguage } from '../i18n'
 import PageCard from '../components/ui/PageCard.vue'
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
@@ -46,6 +45,10 @@ const selectedModelBase = ref<{title: string, value: string, description?: strin
 const selectedModelParam = ref('') // 选择的模型参数
 const availableModelParams = ref<string[]>([]) // 可用的模型参数列表
 const isLoadingModelParams = ref(false) // 是否正在加载模型参数
+
+// 添加余额查询相关的状态
+const isCheckingBalance = ref(false)
+const balanceInfo = ref<{message: string, error?: boolean} | null>(null)
 
 // 可用的模型列表
 const availableModels = [
@@ -345,12 +348,6 @@ watch(useOllama, async (newValue) => {
     selectedModelParam.value = '';
     availableModelParams.value = [];
   }
-});
-
-// 监听主题变化
-watch(themeMode, (newMode) => {
-  // updateTheme(newMode) // 不再直接调用updateTheme
-  // localStorage.setItem('theme-mode', newMode) // 不再直接调用updateTheme
 });
 
 // 选择存储路径
@@ -799,6 +796,52 @@ const ensureUserModelDisplayed = () => {
   }
 }
 
+// 查询DeepSeek API余额
+const checkApiBalance = async () => {
+  if (!apiKey.value) {
+    balanceInfo.value = {
+      message: t('errors.apiKeyMissing'),
+      error: true
+    }
+    return
+  }
+
+  try {
+    isCheckingBalance.value = true
+    balanceInfo.value = null
+
+    // 调用IPC方法查询余额
+    const result = await ipcRenderer.invoke('check-deepseek-balance', apiKey.value)
+    
+    if (result.success) {
+      // 格式化余额显示，添加货币符号
+      let formattedBalance = result.credits;
+      if (result.currency === 'CNY') {
+        formattedBalance = `¥${result.credits}`;
+      } else if (result.currency === 'USD') {
+        formattedBalance = `$${result.credits}`;
+      }
+      
+      balanceInfo.value = {
+        message: t('settings.balanceInfo', { credits: formattedBalance }),
+        error: false
+      }
+    } else {
+      balanceInfo.value = {
+        message: t('errors.balanceCheckFailed', { error: result.error }),
+        error: true
+      }
+    }
+  } catch (error) {
+    balanceInfo.value = {
+      message: t('errors.balanceCheckFailed', { error: error instanceof Error ? error.message : String(error) }),
+      error: true
+    }
+  } finally {
+    isCheckingBalance.value = false
+  }
+}
+
 // 监听设置项变化，实时保存
 watch([
   apiKey, savePath, themeMode, language, model, subtitleBatchSize, useOllama, ollamaUrl, ollamaModel, concurrentThreads, batchSize, maxRetries, saveInterval, progressInterval
@@ -830,7 +873,28 @@ watch(() => settings.value.language, (val) => {
           :append-inner-icon="showApiKey ? 'mdi-eye-off' : 'mdi-eye'"
           @click:append-inner="showApiKey = !showApiKey"
         ></v-text-field>
-        <div class="text-caption text-grey">{{ t('settings.apiKeyHint') }}</div>
+        <div class="d-flex align-center">
+          <div class="text-caption text-grey flex-grow-1">{{ t('settings.apiKeyHint') }}</div>
+          <v-btn
+            color="primary"
+            variant="text"
+            size="small"
+            :loading="isCheckingBalance"
+            @click="checkApiBalance"
+            :disabled="!apiKey"
+          >
+            <v-icon start>mdi-currency-usd</v-icon>
+            {{ t('settings.checkBalance') }}
+          </v-btn>
+        </div>
+        <div v-if="balanceInfo" class="text-caption mt-2">
+          <span class="balance-info" :class="{'success': !balanceInfo.error, 'error': balanceInfo.error}">
+            <v-icon size="small" :color="balanceInfo.error ? 'error' : 'success'" class="mr-1">
+              {{ balanceInfo.error ? 'mdi-alert-circle' : 'mdi-check-circle' }}
+            </v-icon>
+            {{ balanceInfo.message }}
+          </span>
+        </div>
       </v-col>
     </v-row>
 
@@ -1104,5 +1168,30 @@ watch(() => settings.value.language, (val) => {
 /* 统一设置页所有按钮英文首字母大写 */
 .v-btn {
   text-transform: capitalize !important;
+}
+
+.text-success {
+  color: rgb(var(--v-theme-success)) !important;
+}
+
+.text-error {
+  color: rgb(var(--v-theme-error)) !important;
+}
+
+/* 添加余额显示的样式 */
+.balance-info {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.balance-info.success {
+  background-color: rgba(var(--v-theme-success), 0.1);
+}
+
+.balance-info.error {
+  background-color: rgba(var(--v-theme-error), 0.1);
 }
 </style> 
