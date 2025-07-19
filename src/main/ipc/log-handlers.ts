@@ -3,7 +3,7 @@
  * 处理翻译日志的读取、保存和清理
  */
 
-import { app, ipcMain } from 'electron'
+import { app, ipcMain, BrowserWindow } from 'electron'
 import * as path from 'path'
 import * as fsExtra from 'fs-extra'
 import { TranslateLog } from '../types/types'
@@ -93,6 +93,11 @@ export function setupLogHandlers(logger: Logger): void {
 
       // 写入日志文件
       await fsExtra.writeFile(filePath, JSON.stringify(log, null, 2), 'utf-8')
+
+      // 发送翻译完成事件通知给所有窗口
+      BrowserWindow.getAllWindows().forEach(window => {
+        window.webContents.send('translation-completed')
+      })
 
       return { success: true }
     } catch (error) {

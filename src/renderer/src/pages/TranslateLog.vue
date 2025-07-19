@@ -268,26 +268,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import PageCard from '../components/ui/PageCard.vue'
 import { useI18n } from 'vue-i18n'
+import { useTranslateStore, type LogEntry } from '../stores/translateStore'
 
 const { t } = useI18n()
 
-interface LogEntry {
-  fileName: string
-  sourceLanguage: string
-  targetLanguage: string
-  translateCount: number
-  startTime: string
-  endTime?: string
-  duration?: number
-  completed: boolean
-  error?: string
-  translateType: string
-}
+// 使用翻译状态存储
+const translateStore = useTranslateStore()
 
-const logs = ref<LogEntry[]>([])
+// 获取IPC渲染器
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
 // 获取今天的日期字符串 YYYY-MM-DD 格式
@@ -343,9 +334,12 @@ const pageSizeOptions = [
   { title: t('log.perPage', { count: 100 }), value: 100 }
 ]
 
+// 从 store 获取日志
+const logs = computed(() => translateStore.translateLogs)
+
 // 计算当前页的起始和结束项
 const startItem = computed(() => {
-  return (currentPage.value - 1) * pageSize.value + 1
+  return filteredLogs.value.length > 0 ? (currentPage.value - 1) * pageSize.value + 1 : 0
 })
 
 const endItem = computed(() => {
@@ -455,7 +449,7 @@ const filteredLogs = computed(() => {
 
 // 计算总页数
 const totalPages = computed(() => {
-  return Math.ceil(filteredLogs.value.length / pageSize.value)
+  return Math.ceil(filteredLogs.value.length / pageSize.value) || 1
 })
 
 // 获取当前页的日志
@@ -507,35 +501,22 @@ const getStatusColor = (log: LogEntry): string => {
 
 // 刷新日志
 const refreshLogs = async () => {
-  if (!ipcRenderer) return
-  try {
-    const result = await ipcRenderer.invoke('read-logs')
-    if (result.success) {
-      logs.value = result.logs
-    } else {
-      console.error('读取日志失败:', result.error)
-    }
-  } catch (error) {
-    console.error('刷新日志失败:', error)
-  }
+  await translateStore.loadTranslateLogs()
 }
 
 // 清空日志
 const clearLogs = async () => {
-  if (!ipcRenderer) return
   if (confirm(t('log.clearConfirm'))) {
-    try {
-      const result = await ipcRenderer.invoke('clear-logs')
-      if (result.success) {
-        logs.value = []
-        // 可选：alert(t('log.clearSuccess'))
-      } else {
-        console.error(t('log.clearFailed', { error: result.error }))
-      }
-    } catch (error) {
-      console.error(t('log.clearFailed', { error }))
+    const success = await translateStore.clearTranslateLogs()
+    if (!success) {
+      console.error(t('log.clearFailed'))
     }
   }
+}
+
+// 处理翻译完成事件
+const handleTranslationCompleted = () => {
+  translateStore.loadTranslateLogs()
 }
 
 // 修改组件挂载时的初始化逻辑
@@ -549,7 +530,19 @@ onMounted(async () => {
   filters.value.endDate = today
   
   // 立即加载日志
-  await refreshLogs()
+  await translateStore.loadTranslateLogs()
+  
+  // 添加IPC事件监听器，当新的翻译完成时更新日志
+  if (ipcRenderer) {
+    ipcRenderer.on('translation-completed', handleTranslationCompleted)
+  }
+})
+
+// 在组件卸载前移除事件监听器
+onBeforeUnmount(() => {
+  if (ipcRenderer) {
+    ipcRenderer.removeListener('translation-completed', handleTranslationCompleted)
+  }
 })
 </script>
 
@@ -567,8 +560,8 @@ onMounted(async () => {
 
 /* 过滤器区域样式 */
 .filters-container {
-  padding: 16px;
   min-height: 72px;
+  padding: 0px;
   background: rgb(var(--v-theme-surface));
 }
 
@@ -578,7 +571,7 @@ onMounted(async () => {
   min-height: 0;
   overflow: auto;
   padding: 0 16px;
-  margin: 16px 0;
+  margin: 0;
 }
 
 .log-list {
@@ -615,8 +608,8 @@ onMounted(async () => {
 /* 分页相关样式 */
 .pagination {
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  padding: 16px 24px;
-  min-height: 84px;
+  padding: 0;
+  min-height: 64px;
   background: rgb(var(--v-theme-surface));
 }
 

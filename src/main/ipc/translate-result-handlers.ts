@@ -3,7 +3,7 @@
  * 处理翻译结果的保存、读取、更新和清理
  */
 
-import { app, ipcMain } from 'electron'
+import { app, ipcMain, BrowserWindow } from 'electron'
 import * as path from 'path'
 import * as fsExtra from 'fs-extra'
 import { TranslateResult } from '../types/types'
@@ -15,7 +15,7 @@ import { Logger } from '../utils/logger'
  */
 export function setupTranslateResultHandlers(logger: Logger): void {
   // 保存翻译结果
-  ipcMain.handle('save-translate-result', async (_, result: TranslateResult) => {
+  ipcMain.handle('save-translate-result', async (event, result: TranslateResult) => {
     try {
       const savePath = await getSavePath()
 
@@ -30,6 +30,11 @@ export function setupTranslateResultHandlers(logger: Logger): void {
 
       // 写入结果文件
       await fsExtra.writeJSON(filePath, result, { spaces: 2 })
+
+      // 发送翻译完成事件通知给所有窗口
+      BrowserWindow.getAllWindows().forEach(window => {
+        window.webContents.send('translation-completed')
+      })
 
       return { success: true }
     } catch (error) {

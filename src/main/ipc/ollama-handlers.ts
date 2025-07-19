@@ -37,6 +37,9 @@ export function setupOllamaHandlers(logger: Logger): void {
         const requestModule = url.protocol === 'https:' ? https : http
         
         logger.info(`发送请求到 ${fullUrl}`)
+        if (requestBody) {
+          logger.info(`请求体: ${requestBody.substring(0, 200)}...`)
+        }
         
         const req = requestModule.request(options, (res) => {
           let data = ''
@@ -47,14 +50,35 @@ export function setupOllamaHandlers(logger: Logger): void {
           
           res.on('end', () => {
             try {
-              const jsonData = JSON.parse(data)
-              logger.info(`成功从 ${fullUrl} 获取响应`)
-              resolve({ success: true, data: jsonData })
+              logger.info(`收到来自 ${fullUrl} 的响应，状态码: ${res.statusCode}`)
+              logger.info(`响应数据(前200字符): ${data.substring(0, 200)}...`)
+              
+              // 尝试解析JSON
+              try {
+                const jsonData = JSON.parse(data)
+                logger.info(`成功解析JSON响应`)
+                resolve({ success: true, data: jsonData })
+              } catch (parseErr) {
+                logger.warn(`无法解析为JSON: ${parseErr}，尝试作为纯文本返回`)
+                
+                // 如果无法解析为JSON，则返回原始文本
+                if (data && typeof data === 'string') {
+                  resolve({ success: true, data: data })
+                } else {
+                  logger.error(`无效的响应数据`)
+                  resolve({ 
+                    success: false, 
+                    error: '无效的响应数据',
+                    rawResponse: data
+                  })
+                }
+              }
             } catch (err) {
-              logger.error(`解析响应失败: ${err}`)
+              logger.error(`处理响应失败: ${err}`)
               resolve({ 
                 success: false, 
-                error: `解析响应失败: ${err && typeof err === 'object' && 'message' in err ? (err as any).message : String(err)}` 
+                error: `处理响应失败: ${err && typeof err === 'object' && 'message' in err ? (err as any).message : String(err)}`,
+                rawResponse: data
               })
             }
           })

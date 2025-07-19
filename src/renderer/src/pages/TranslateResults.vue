@@ -1,23 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useTheme } from 'vuetify'
-import { useTranslateStore } from '../stores/translateStore'
+import { useTranslateStore, type TranslateResult } from '../stores/translateStore'
 import PageCard from '../components/ui/PageCard.vue'
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
-
-interface TranslateResult {
-  id: string
-  type: '文本' | '文档' | '字幕'
-  sourceLanguage: string
-  targetLanguage: string
-  sourceContent: string
-  translatedContent: string
-  timestamp: string
-  status: '成功' | '失败'
-  fileName: string
-  filePath: string
-}
 
 // 修改重命名目标类型
 interface RenameTarget {
@@ -28,8 +15,8 @@ interface RenameTarget {
 const theme = useTheme()
 const isDark = computed(() => theme.global.current.value.dark)
 
-// 模拟数据
-const results = ref<TranslateResult[]>([])
+// 使用翻译状态存储
+const translateStore = useTranslateStore()
 
 // 过滤相关
 const search = ref('')
@@ -71,8 +58,8 @@ const statuses = [
   { title: t('results.statusFailed'), value: '失败' }
 ]
 
-// 使用翻译状态存储
-const translateStore = useTranslateStore()
+// 从 store 获取翻译结果
+const results = computed(() => translateStore.translateResults)
 
 // 过滤和排序后的结果
 const filteredResults = computed(() => {
@@ -132,24 +119,31 @@ watch(pageSize, () => {
   currentPage.value = 1
 })
 
-// 加载翻译结果
-async function loadResults() {
-  try {
-    const response = await ipcRenderer?.invoke('read-translate-results')
-    if (response?.success) {
-      results.value = response.results
-    } else {
-      console.error('加载翻译结果失败:', response?.error)
-    }
-  } catch (error) {
-    console.error('加载翻译结果失败:', error)
-  }
-}
+// 获取IPC渲染器
+const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
 // 在组件挂载时加载结果
 onMounted(() => {
-  loadResults()
+  // 加载翻译结果
+  translateStore.loadTranslateResults()
+  
+  // 添加IPC事件监听器，当新的翻译完成时更新结果
+  if (ipcRenderer) {
+    ipcRenderer.on('translation-completed', handleTranslationCompleted)
+  }
 })
+
+// 在组件卸载前移除事件监听器
+onBeforeUnmount(() => {
+  if (ipcRenderer) {
+    ipcRenderer.removeListener('translation-completed', handleTranslationCompleted)
+  }
+})
+
+// 处理翻译完成事件
+const handleTranslationCompleted = () => {
+  translateStore.loadTranslateResults()
+}
 
 // 导出翻译结果
 const exportResults = async () => {
@@ -214,8 +208,6 @@ const clearFilters = () => {
   selectedStatus.value = []
   dateRange.value = [null, null]
 }
-
-const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
 // 检查文件路径是否完整，如果不是完整路径则显示错误提示
 const isValidPath = (filePath: string | undefined): boolean => {
@@ -302,14 +294,16 @@ const getLineCount = (text: string) => {
 
 // 获取文件名
 const getFileName = (filePath: string | undefined) => {
-  if (!filePath) return ''
-  return filePath.split(/[\\/]/).pop() || ''
+  if (!filePath || typeof filePath !== 'string') return ''
+  const parts = filePath.split(/[\\/]/)
+  return parts[parts.length - 1] || ''
 }
 
 // 获取文件夹路径
 const getDirectoryPath = (filePath: string | undefined) => {
-  if (!filePath) return ''
+  if (!filePath || typeof filePath !== 'string') return ''
   const fileName = getFileName(filePath)
+  if (!fileName) return filePath
   return filePath.slice(0, filePath.length - fileName.length)
 }
 
@@ -366,7 +360,7 @@ const renameFile = async () => {
         snackbarColor.value = 'warning'
         snackbarText.value = t('results.renameSuccess') + t('results.updateStoreFailed')
         // 重新加载结果以保持数据一致性
-        await loadResults()
+        translateStore.loadTranslateResults()
       }
     } else {
       snackbarColor.value = 'error'
@@ -730,7 +724,7 @@ const navigateToPage = (page: string) => {
   gap: 16px;
   align-items: center;
   flex-wrap: nowrap;
-  padding: 16px;
+  padding: 0px;
   min-height: 72px; /* 固定搜索栏高度 */
   background: rgb(var(--v-theme-surface));
 }
@@ -756,7 +750,7 @@ const navigateToPage = (page: string) => {
   flex: 1;
   min-height: 0; /* 允许flex-grow收缩 */
   overflow: hidden;
-  padding: 0 16px;
+  padding: 0;
 }
 
 :deep(.v-table) {
@@ -857,10 +851,9 @@ const navigateToPage = (page: string) => {
 /* 分页相关样式 */
 .pagination {
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  padding: 16px 24px;
-  min-height: 84px; /* 固定分页栏高度 */
+  padding: 0;
+  min-height: 64px; /* 固定分页栏高度 */
   background: rgb(var(--v-theme-surface));
-  margin-top: 16px;
 }
 
 .page-size-select {

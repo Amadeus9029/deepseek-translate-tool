@@ -14,12 +14,8 @@ import '@mdi/font/css/materialdesignicons.css'
 import { i18n, initI18n } from './i18n'
 // Components
 import App from './App.vue'
-import { initTranslateService } from './services/TranslateService'
 import { settings, loadSettings } from './services/SettingsService'
 import config from './config/config'
-
-// 初始化翻译服务
-initTranslateService(config.apiKey)
 
 // 确保加载设置
 loadSettings()

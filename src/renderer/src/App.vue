@@ -9,6 +9,7 @@ import TranslateLog from './pages/TranslateLog.vue'
 import TranslateResults from './pages/TranslateResults.vue'
 import Settings from './pages/Settings.vue'
 import About from './pages/About.vue'
+import DocxParser from './pages/DocxParser.vue'
 import { settings } from './services/SettingsService'
 import TitleBar from './components/layout/TitleBar.vue'
 import Sidebar from './components/layout/Sidebar.vue'
@@ -26,6 +27,7 @@ const menuItems = computed(() => [
   { key: 'videoTranslate', title: t('menu.videoTranslate'), icon: 'mdi-video' },
   { key: 'translateResults', title: t('menu.translateResults'), icon: 'mdi-text-box-check' },
   { key: 'logs', title: t('menu.logs'), icon: 'mdi-file-document-edit' },
+  // { key: 'docxParser', title: 'Word解析', icon: 'mdi-xml' },
   { key: 'settings', title: t('menu.settings'), icon: 'mdi-cog' },
   { key: 'about', title: t('menu.about'), icon: 'mdi-information' }
 ])
@@ -96,6 +98,8 @@ const currentComponent = computed(() => {
       return TranslateResults
     case 'logs':
       return TranslateLog
+    // case 'docxParser':
+    //   return DocxParser
     case 'settings':
       return Settings
     case 'about':

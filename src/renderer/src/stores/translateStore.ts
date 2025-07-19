@@ -13,6 +13,34 @@ export interface SubtitleItem {
   style?: string
 }
 
+// 翻译结果接口
+export interface TranslateResult {
+  id: string
+  type: '文本' | '文档' | '字幕'
+  sourceLanguage: string
+  targetLanguage: string
+  sourceContent: string
+  translatedContent: string
+  timestamp: string
+  status: '成功' | '失败'
+  fileName?: string
+  filePath?: string
+}
+
+// 日志条目接口
+export interface LogEntry {
+  fileName: string
+  sourceLanguage: string
+  targetLanguage: string
+  translateCount: number
+  startTime: string
+  endTime?: string
+  duration?: number
+  completed: boolean
+  error?: string
+  translateType: string
+}
+
 // 视频翻译状态
 export interface VideoTranslateState {
   subtitleFile: string
@@ -46,9 +74,9 @@ export interface TextTranslateState {
 export interface DocumentTranslateState {
   excelFile: string
   referenceType: 'none' | 'internal' | 'external'
-  internalRefLang: string
+  internalRefLang: LanguageOption | null
   externalRefFile: string
-  externalRefLang: string
+  externalRefLang: LanguageOption | null
   sourceLanguage: LanguageOption | null
   selectedLanguages: string[]
   logs: string[]
@@ -134,9 +162,9 @@ export const useTranslateStore = defineStore('translate', () => {
   const documentTranslate = ref<DocumentTranslateState>({
     excelFile: '',
     referenceType: 'none',
-    internalRefLang: '',
+    internalRefLang: null,
     externalRefFile: '',
-    externalRefLang: '',
+    externalRefLang: null,
     sourceLanguage: null,
     selectedLanguages: [],
     logs: [],
@@ -165,6 +193,12 @@ export const useTranslateStore = defineStore('translate', () => {
     availableModels: [],
     modelParams: {}
   })
+  
+  // 翻译结果列表
+  const translateResults = ref<TranslateResult[]>([])
+  
+  // 翻译日志列表
+  const translateLogs = ref<LogEntry[]>([])
   
   // 清空字幕翻译状态
   function clearSubtitles() {
@@ -271,9 +305,9 @@ export const useTranslateStore = defineStore('translate', () => {
     documentTranslate.value = {
       excelFile: '',
       referenceType: 'none',
-      internalRefLang: '',
+      internalRefLang: null,
       externalRefFile: '',
-      externalRefLang: '',
+      externalRefLang: null,
       sourceLanguage: null,
       selectedLanguages: [],
       logs: [],
@@ -306,6 +340,88 @@ export const useTranslateStore = defineStore('translate', () => {
   function addDocumentLog(log: string) {
     documentTranslate.value.logs.push(log)
   }
+
+  // 加载翻译结果
+  async function loadTranslateResults() {
+    try {
+      const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
+      if (!ipcRenderer) return
+      
+      const response = await ipcRenderer.invoke('read-translate-results')
+      if (response?.success) {
+        translateResults.value = response.results
+      } else {
+        console.error('加载翻译结果失败:', response?.error)
+      }
+    } catch (error) {
+      console.error('加载翻译结果失败:', error)
+    }
+  }
+
+  // 添加翻译结果
+  function addTranslateResult(result: TranslateResult) {
+    // 检查是否已存在相同ID的结果
+    const index = translateResults.value.findIndex(r => r.id === result.id)
+    if (index >= 0) {
+      // 更新已存在的结果
+      translateResults.value[index] = result
+    } else {
+      // 添加新结果到数组开头（最新的在前面）
+      translateResults.value.unshift(result)
+    }
+  }
+
+  // 加载翻译日志
+  async function loadTranslateLogs() {
+    try {
+      const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
+      if (!ipcRenderer) return
+      
+      const response = await ipcRenderer.invoke('read-logs')
+      if (response?.success) {
+        translateLogs.value = response.logs
+      } else {
+        console.error('加载翻译日志失败:', response?.error)
+      }
+    } catch (error) {
+      console.error('加载翻译日志失败:', error)
+    }
+  }
+
+  // 添加翻译日志
+  function addTranslateLog(log: LogEntry) {
+    // 检查是否已存在相同时间戳和文件名的日志
+    const index = translateLogs.value.findIndex(
+      l => l.startTime === log.startTime && l.fileName === log.fileName
+    )
+    if (index >= 0) {
+      // 更新已存在的日志
+      translateLogs.value[index] = log
+    } else {
+      // 添加新日志到数组开头（最新的在前面）
+      translateLogs.value.unshift(log)
+    }
+  }
+
+  // 清空翻译日志
+  async function clearTranslateLogs() {
+    try {
+      const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
+      if (!ipcRenderer) return
+      
+      const response = await ipcRenderer.invoke('clear-logs')
+      if (response?.success) {
+        translateLogs.value = []
+        return true
+      } else {
+        console.error('清空翻译日志失败:', response?.error)
+        return false
+      }
+    } catch (error) {
+      console.error('清空翻译日志失败:', error)
+      return false
+    }
+  }
   
   // 返回所有状态和方法
   return {
@@ -331,6 +447,8 @@ export const useTranslateStore = defineStore('translate', () => {
     documentTranslate,
     settings,
     ollamaModelData,
+    translateResults,
+    translateLogs,
      
     // 字幕翻译方法
     clearSubtitles,
@@ -357,6 +475,11 @@ export const useTranslateStore = defineStore('translate', () => {
     updateModelParams,
      
     // 日志方法
-    addDocumentLog
+    addDocumentLog,
+    loadTranslateResults,
+    addTranslateResult,
+    loadTranslateLogs,
+    addTranslateLog,
+    clearTranslateLogs
   }
 }) 
